@@ -8,7 +8,8 @@
         "test": "echo \"Error: no test specified\" && exit 1",
         "database": "nodemon --exec ./node_modules/.bin/babel-node src/modal/CreateDatabase.js",
         "start": "node src/server.js",
-        "dev": "nodemon src/server.js"
+        "dev": "nodemon src/server.js",
+        "import-schema": "node importSchema.js"
     },
     "author": "",
     "license": "ISC",
