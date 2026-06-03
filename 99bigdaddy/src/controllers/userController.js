@@ -186,17 +186,19 @@ const userInfo = async (req, res) => {
         let totalWithdraw = 0;
 
         try {
-            const [recharge] = await connection.query('SELECT * FROM recharge WHERE `phone` = ? AND status = 1', [user.phone]);
-            recharge.forEach((data) => {
-                totalRecharge += Number(data.money || 0);
-            });
+            const [recharge] = await connection.query(
+                'SELECT COALESCE(SUM(money), 0) AS totalRecharge FROM recharge WHERE `phone` = ? AND status = 1',
+                [user.phone]
+            );
+            totalRecharge = Number(recharge?.[0]?.totalRecharge || 0);
         } catch (error) {}
 
         try {
-            const [withdraw] = await connection.query('SELECT * FROM withdraw WHERE `phone` = ? AND status = 1', [user.phone]);
-            withdraw.forEach((data) => {
-                totalWithdraw += Number(data.money || 0);
-            });
+            const [withdraw] = await connection.query(
+                'SELECT COALESCE(SUM(money), 0) AS totalWithdraw FROM withdraw WHERE `phone` = ? AND status = 1',
+                [user.phone]
+            );
+            totalWithdraw = Number(withdraw?.[0]?.totalWithdraw || 0);
         } catch (error) {}
 
         let fixedDeposit = {

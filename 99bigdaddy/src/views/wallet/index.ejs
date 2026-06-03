@@ -1,384 +1,480 @@
 <!DOCTYPE html>
-<html translate="no" data-dpr="1" style="font-size: 48.16px;">
-
+<html lang="en" translate="no">
 <head>
     <meta charset="utf-8">
-    <meta name="csrf-token" content="" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="robots" content="noindex,nofollow">
-    <meta content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" name="viewport">
-    <title>Drakon</title>
-    <link href="/css/wallet/main.css" rel="stylesheet" />
-    <link href="/css/wallet/chunk_2-1.css" rel="stylesheet" />
-    <link href="/css/wallet/chunk_2-2.css" rel="stylesheet" />
-    <link href="/css/wallet/chunk_2-3.css" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>Drakon Wallet</title>
     <link rel="shortcut icon" href="/images/drakon-mark.svg" type="image/x-icon">
     <style>
-        html,
+        :root {
+            --bg: #232323;
+            --panel: #f7f3ec;
+            --card: #ffffff;
+            --text: #2a2a2a;
+            --muted: #878787;
+            --gold-1: #ff875d;
+            --gold-2: #ea5b4b;
+            --gold-3: #f6d887;
+            --line: rgba(0, 0, 0, 0.08);
+            --success: #1c9c5a;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            height: 100%;
-            width: 100%;
-            background-color: #090909;
-            padding: 0;
             margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: var(--bg);
+            color: var(--text);
         }
 
-        #image_box {
-            width: 100%;
-            gap: 0.28rem;
+        .wallet-page {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: var(--panel);
+            padding-bottom: 88px;
         }
 
-        #image_box .images_21 {
-            width: 25%;
-            display: -webkit-box;
-            display: -webkit-flex;
-            display: flex;
-            -webkit-box-orient: vertical;
-            -webkit-box-direction: normal;
-            -webkit-flex-direction: column;
-            flex-direction: column;
-            -webkit-box-align: center;
-            -webkit-align-items: center;
-            align-items: stretch;
-            -webkit-box-pack: start;
-            -webkit-justify-content: flex-start;
-            gap: 0.13333rem;
-        }
-
-        #image_box .images_21 img {
-            width: 1rem;
-            margin-left: 1.5vw;
-            box-shadow: 5px 5px 5px 5px rgba(0, 0, 0, 0.1);
-            border-radius: 0.3rem;
+        .topbar {
+            height: 56px;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            color: #fff;
+            background: #3f3f3f;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
-        #image_box .images_21 p {
-            text-align: center;
-            color: grey;
-            font-weight: 600;
-            font-family: math;
+        .topbar-button {
+            border: 0;
+            background: transparent;
+            color: inherit;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 6px;
         }
 
-        @media (max-width:600px) {
-            #image_box .images_21 img {
-                width: 1rem;
-                margin-left: 5vw;
-                box-shadow: 5px 5px 5px 5px rgba(0, 0, 0, 0.1);
-                border-radius: 0.3rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-        }
-
-        .fd-panel {
-            margin-top: .35rem;
-            background: #fff;
-            border-radius: .22rem;
-            padding: .32rem;
-            box-shadow: 0 0.08rem 0.22rem rgba(0, 0, 0, 0.08);
-        }
-
-        .fd-title {
-            font-size: .42rem;
+        .topbar-title {
+            font-size: 20px;
             font-weight: 700;
-            color: #8f5206;
-            margin-bottom: .15rem;
         }
 
-        .fd-subtitle {
-            font-size: .28rem;
-            color: #777;
-            margin-bottom: .28rem;
+        .content {
+            padding: 16px;
         }
 
-        .fd-stats {
+        .summary-card {
+            background: linear-gradient(135deg, var(--gold-1), var(--gold-2));
+            color: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 12px 28px rgba(234, 91, 75, 0.25);
+        }
+
+        .summary-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .summary-badge {
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            border-radius: 999px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .summary-amount {
+            font-size: 42px;
+            font-weight: 800;
+            margin: 0 0 8px;
+        }
+
+        .summary-subtitle {
+            font-size: 14px;
+            opacity: 0.95;
+        }
+
+        .metrics {
+            background: var(--card);
+            margin-top: 16px;
+            border-radius: 16px;
+            padding: 18px 16px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06);
+        }
+
+        .metrics-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: .2rem;
-            margin-bottom: .28rem;
+            gap: 14px;
         }
 
-        .fd-stat {
-            background: linear-gradient(135deg, #fff8e8, #fff);
-            border: 1px solid #f3dfb1;
-            border-radius: .18rem;
-            padding: .22rem;
+        .metric-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ef6d58;
         }
 
-        .fd-stat-label {
-            font-size: .24rem;
-            color: #8a8a8a;
-            margin-bottom: .08rem;
+        .metric-value.success {
+            color: var(--success);
         }
 
-        .fd-stat-value {
-            font-size: .36rem;
-            color: #8f5206;
+        .metric-label {
+            margin-top: 4px;
+            color: #676767;
+            font-size: 14px;
+        }
+
+        .rate-pill {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 6px 12px;
+            border: 1px solid #ece3cf;
+            border-radius: 999px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .action-button {
+            height: 48px;
+            border-radius: 12px;
+            font-size: 16px;
             font-weight: 700;
+            cursor: pointer;
+            border: 1px solid #f0c8ba;
+            transition: transform .15s ease;
         }
 
-        .fd-plans {
+        .action-button:active {
+            transform: scale(0.98);
+        }
+
+        .action-button.secondary {
+            background: #fff;
+            color: #ec775f;
+        }
+
+        .action-button.primary {
+            border: none;
+            background: linear-gradient(90deg, #ff9f7c, #f37059);
+            color: #fff;
+        }
+
+        .notice {
+            margin-top: 14px;
+            color: #db785f;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .learn-link {
+            margin-top: 18px;
+            text-align: center;
+            color: #666;
+            font-size: 15px;
+        }
+
+        .section {
+            margin-top: 18px;
+            background: var(--card);
+            border-radius: 16px;
+            padding: 18px 16px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.06);
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 800;
+            margin: 0 0 16px;
+        }
+
+        .plan-list {
             display: flex;
             flex-direction: column;
-            gap: .18rem;
-            margin-bottom: .26rem;
+            gap: 12px;
         }
 
-        .fd-plan {
-            border: 1px solid #f1d58d;
-            border-radius: .2rem;
-            padding: .22rem;
+        .plan-card {
+            border: 1px solid #efe7d7;
+            border-radius: 14px;
+            padding: 14px;
             background: #fffdf7;
             cursor: pointer;
         }
 
-        .fd-plan.active {
-            border-color: #d9a23b;
-            background: linear-gradient(135deg, #fff3cf, #fffdf8);
-            box-shadow: 0 0.06rem 0.18rem rgba(217, 162, 59, 0.18);
+        .plan-card.active {
+            border-color: #f08b6d;
+            box-shadow: 0 6px 18px rgba(240, 139, 109, 0.16);
         }
 
-        .fd-plan-top {
+        .plan-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: .08rem;
             font-weight: 700;
-            color: #754200;
+            margin-bottom: 6px;
         }
 
-        .fd-plan-rate {
-            color: #e67e22;
+        .plan-rate {
+            color: #ef6d58;
         }
 
-        .fd-plan-note {
-            font-size: .24rem;
-            color: #7c7c7c;
+        .plan-note {
+            color: #7a7a7a;
+            font-size: 13px;
         }
 
-        .fd-form {
+        .deposit-form {
+            margin-top: 16px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+        }
+
+        .amount-input {
+            height: 48px;
+            border-radius: 12px;
+            border: 1px solid #e6dfd3;
+            padding: 0 14px;
+            font-size: 16px;
+            width: 100%;
+        }
+
+        .records {
             display: flex;
-            gap: .18rem;
-            align-items: stretch;
-            margin-bottom: .28rem;
+            flex-direction: column;
+            gap: 12px;
         }
 
-        .fd-input {
-            flex: 1;
-            border: 1px solid #e3e3e3;
-            border-radius: .18rem;
-            padding: 0 .22rem;
-            font-size: .32rem;
-            min-height: .96rem;
+        .record-card {
+            border: 1px solid #f0ece4;
+            border-radius: 14px;
+            padding: 14px;
+            background: #fcfbf8;
         }
 
-        .fd-button {
-            border: none;
-            border-radius: .18rem;
-            padding: 0 .34rem;
-            min-height: .96rem;
-            background: linear-gradient(90deg, #ffd01e, #ff8917);
-            color: #6a3b00;
+        .record-tag {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 10px;
+            font-size: 12px;
             font-weight: 700;
-            font-size: .3rem;
+            margin-bottom: 10px;
+        }
+
+        .record-tag.in {
+            background: #ef6d58;
+            color: #fff;
+        }
+
+        .record-tag.out {
+            background: #fff;
+            color: #ef6d58;
+            border: 1px solid #efb6a8;
+        }
+
+        .record-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin: 6px 0;
+            font-size: 14px;
+        }
+
+        .record-row .label {
+            color: #6f6f6f;
+        }
+
+        .record-row .value {
+            font-weight: 700;
+        }
+
+        .record-row .value.green {
+            color: var(--success);
+        }
+
+        .record-row .value.orange {
+            color: #ef8b5c;
+        }
+
+        .record-footer {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            color: #8a8a8a;
+            font-size: 13px;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #8a8a8a;
+            padding: 10px 0 4px;
+        }
+
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .quick-link {
+            background: #fff;
+            border-radius: 14px;
+            padding: 12px 8px;
+            text-align: center;
+            color: #6f6f6f;
+            font-size: 12px;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
             cursor: pointer;
         }
 
-        .fd-button.secondary {
-            min-height: .74rem;
-            padding: 0 .28rem;
-            font-size: .26rem;
+        .quick-link img {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+            margin-bottom: 8px;
         }
 
-        .fd-history {
-            display: flex;
-            flex-direction: column;
-            gap: .18rem;
+        .bottom-nav {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 0;
+            width: 100%;
+            max-width: 480px;
+            background: #2d2d2d;
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            padding: 8px 0 10px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            z-index: 15;
         }
 
-        .fd-history-item {
-            border: 1px solid #f1f1f1;
-            border-radius: .18rem;
-            padding: .22rem;
-            background: #fafafa;
-        }
-
-        .fd-history-head {
-            display: flex;
-            justify-content: space-between;
-            gap: .16rem;
-            font-weight: 700;
-            color: #5f5f5f;
-            margin-bottom: .08rem;
-        }
-
-        .fd-history-meta {
-            font-size: .24rem;
-            color: #868686;
-            line-height: 1.5;
-        }
-
-        .fd-history-status {
-            color: #e67e22;
-            text-transform: capitalize;
-        }
-
-        .fd-history-status.matured {
-            color: #2e8b57;
-        }
-
-        .fd-empty {
-            color: #8d8d8d;
-            font-size: .28rem;
+        .bottom-nav-item {
             text-align: center;
-            padding: .25rem 0;
+            color: #a8a8a8;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .bottom-nav-item.active {
+            color: var(--gold-3);
+            font-weight: 700;
+        }
+
+        .bottom-nav-icon {
+            display: block;
+            font-size: 20px;
+            margin-bottom: 4px;
         }
     </style>
 </head>
+<body>
+    <div class="wallet-page">
+        <div class="topbar">
+            <button class="topbar-button" onclick="window.location='/home'">&#8249;</button>
+            <div class="topbar-title">Wallet</div>
+            <button class="topbar-button" onclick="window.location='/keFuMenu'">&#9835;</button>
+        </div>
 
-<body style="font-size: 12px;">
-    <div id="app">
-        <div data-v-7b283485="" class="mian">
-            <div data-v-106b99c8="" data-v-7b283485="" class="navbar">
-                <div data-v-106b99c8="" class="navbar-left" onclick="location.href='/home'">
-                    <div data-v-a9660e98="" data-v-106b99c8="" class="c-row c-row-middle-center">
-                        <i class="fa-light fa-angle-left fa-fade fa-xl center" style="color: #FFF"></i>
+        <div class="content">
+            <div class="summary-card">
+                <div class="summary-head">
+                    <div style="font-size:18px;">&#9632;</div>
+                    <div class="summary-badge">Financial security</div>
+                </div>
+                <div class="summary-amount" id="fdLockedAmount">$0.00</div>
+                <div class="summary-subtitle">24-hour estimated revenue <strong id="fdDailyRevenue">$0.00</strong></div>
+            </div>
+
+            <div class="metrics">
+                <div class="metrics-grid">
+                    <div>
+                        <div class="metric-value" id="fdGeneratedRevenue">$0.00</div>
+                        <div class="metric-label">Generated revenue</div>
+                        <div class="rate-pill" id="fdRateLabel">My interest rate 0.50</div>
+                    </div>
+                    <div>
+                        <div class="metric-value success" id="fdAccumulatedRevenue">$0.00</div>
+                        <div class="metric-label">Accumulated revenue</div>
                     </div>
                 </div>
-                <div data-v-106b99c8="" class="navbar-title"> Wallet </div>
-                <div data-v-106b99c8="" class="navbar-right" onclick="location.href='/keFuMenu'">
-                    <div data-v-7b283485="" data-v-106b99c8="" class="c-row">
-                        <i class="fa-fade fa center" style="color: #FFF">
-                            <img data-v-7b283485="" data-v-106b99c8="" src="/images/audio.webp" class="audio">
-                        </i>
-                    </div>
+
+                <div class="actions">
+                    <button class="action-button secondary" id="fdWithdrawAction">Transfer Out</button>
+                    <button class="action-button primary" id="fdCreateAction">Transfer In</button>
+                </div>
+
+                <div class="notice">Funds are safe and secure, and can be transferred only after the selected FD tenure is complete.</div>
+                <div class="learn-link">Learn about safes &raquo;</div>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">Fixed Deposit Plans</h2>
+                <div class="plan-list" id="fdPlans"></div>
+                <div class="deposit-form">
+                    <input id="fdAmount" class="amount-input" type="number" min="1" step="0.01" placeholder="Enter amount to transfer in">
+                    <button class="action-button primary" id="fdCreateButton">Confirm</button>
                 </div>
             </div>
-            <div data-v-7b283485="" class="wallet">
-                <div data-v-7b283485="" class="wallet-user c-tc">
-                    <div data-v-7b283485="" class="c-row c-row-center img">
-                        <div data-v-7b283485="" class="van-image" border-radius="60px"
-                            style="width: 60px; height: 60px;">
-                            <img src="/images/wallets-f7d6f3d6.png" class="van-image__img">
-                        </div>
-                    </div>
-                    <!--<div data-v-7b283485="" class="name"></div>-->
-                    <div data-v-7b283485="" class="title" style="color: #8f5206">Total Balance</div>
-                    <p style="margin-top: 2px; font-weight: bold; font-size: medium;">Use 10% of Free Bonus in
-                        each
-                        deposit!!</p>
+
+            <div class="section">
+                <h2 class="section-title">Historical records</h2>
+                <div class="records" id="fdHistory"></div>
+            </div>
+
+            <div class="quick-links">
+                <div class="quick-link" onclick="window.location='/wallet/recharge'">
+                    <img src="/images/recharge.png" alt="">
+                    <div>Deposit</div>
                 </div>
-
-                <div data-v-7b283485="" class="wallet-box">
-                    <div data-v-7b283485="" class="box">
-                        <div data-v-7b283485="" class="icon1"></div>
-                        <!--<div data-v-7b283485="" class="title">Wallet</div>-->
-                        <div data-v-7b283485="" class="balance m-t-10">
-                            <!--<div data-v-7b283485="" class="txt c-row c-row-middle">
-                                <img data-v-7b283485="" width="22px" height="18px" src="/images/king (2).png"
-                                    class="m-r-5 img"> My balance：
-                            </div>-->
-                            <div data-v-7b283485="" class="c-row balanceMoney c-row-middle-center">
-                                <div data-v-7b283485="" class="money">
-                                    <!---->
-                                    <div data-v-7b283485="">₹<span data-v-7b283485="" class="p-l-10">Loading...</span>
-                                    </div>
-                                </div>
-                                <div data-v-7b283485="" id="reload">
-                                    <div data-v-7b283485="" class="van-image img m-l-15"
-                                        style="width: 25px; height: 25px;">
-                                        <img src="/images/reload.png" class="van-image__img">
-                                    </div>
-                                </div>
-                            </div>
-                            <div data-v-7b283485="" class="info c-row">
-                                <div data-v-7b283485="" class="item">
-                                    <div data-v-7b283485="">Total Withdrawal</div>
-                                    <!---->
-                                    <div data-v-7b283485="">₹ 0.00</div>
-                                </div>
-                                <div data-v-7b283485="" class="item">
-                                    <div data-v-7b283485="">Free Bonus</div>
-                                    <!---->
-                                    <div data-v-7b283485="">₹ 0.00</div>
-                                </div>
-                                <!-- <div data-v-7b283485="" class="item free-bonus">
-                                    <div data-v-7b283485="">Free Bonus</div>
-                                    <div data-v-7b283485="">₹ 0.00</div>
-                                </div> -->
-                            </div>
-                        </div>
-                        <div data-v-7b283485="" class="c-row c-row-between total-btn m-t-30">
-                            <div data-v-7b283485="" class="item c-row c-row-center"
-                                onclick="location.href='/wallet/transfer'">
-                                <div data-v-7b283485="" class="li"> MAIN WALLET TRANSFER </div>
-                            </div>
-                        </div>
-                        <div data-v-7b283485="" class="c-row c-row-between total-btn m-t-30" id="image_box">
-                            <div class="images_21" onclick="location.href='/wallet/recharge'">
-                                <img src="/images/recharge.png">
-                                <p>Deposit</p>
-                            </div>
-                            <div class="images_21" onclick="location.href='/wallet/withdrawal'">
-                                <img src="/images/withdraw.png">
-                                <p>Withdraw</p>
-                            </div>
-                            <div class="images_21" onclick="location.href='/wallet/rechargerecord'">
-                                <img src="/images/rechargeHistory.png">
-                                <p>Deposit History</p>
-                            </div>
-                            <div class="images_21" onclick="location.href='/wallet/withdrawalrecord'">
-                                <img src="/images/withdrawHistory.png">
-                                <p>Withdraw History</p>
-                            </div>
-
-                        </div>
-
-                        <div class="fd-panel">
-                            <div class="fd-title">Fixed Deposit Vault</div>
-                            <div class="fd-subtitle">Lock wallet funds for a fixed tenure and withdraw only after maturity.</div>
-                            <div class="fd-stats">
-                                <div class="fd-stat">
-                                    <div class="fd-stat-label">Locked Amount</div>
-                                    <div class="fd-stat-value" id="fdLockedAmount">$0.00</div>
-                                </div>
-                                <div class="fd-stat">
-                                    <div class="fd-stat-label">Withdrawable on Maturity</div>
-                                    <div class="fd-stat-value" id="fdWithdrawableAmount">$0.00</div>
-                                </div>
-                                <div class="fd-stat">
-                                    <div class="fd-stat-label">Projected Interest</div>
-                                    <div class="fd-stat-value" id="fdProjectedInterest">$0.00</div>
-                                </div>
-                                <div class="fd-stat">
-                                    <div class="fd-stat-label">Projected Maturity Value</div>
-                                    <div class="fd-stat-value" id="fdMaturityAmount">$0.00</div>
-                                </div>
-                            </div>
-                            <div class="fd-plans" id="fdPlans"></div>
-                            <div class="fd-form">
-                                <input id="fdAmount" class="fd-input" type="number" min="1" step="0.01" placeholder="Enter FD amount">
-                                <button id="fdCreateButton" class="fd-button">Create FD</button>
-                            </div>
-                            <div class="fd-title" style="font-size:.34rem;">Your FD Records</div>
-                            <div class="fd-history" id="fdHistory"></div>
-                        </div>
-
-                    </div>
-
+                <div class="quick-link" onclick="window.location='/wallet/withdrawal'">
+                    <img src="/images/withdraw.png" alt="">
+                    <div>Withdraw</div>
+                </div>
+                <div class="quick-link" onclick="window.location='/wallet/rechargerecord'">
+                    <img src="/images/rechargeHistory.png" alt="">
+                    <div>Deposit History</div>
+                </div>
+                <div class="quick-link" onclick="window.location='/wallet/withdrawalrecord'">
+                    <img src="/images/withdrawHistory.png" alt="">
+                    <div>Withdraw History</div>
                 </div>
             </div>
-            <%- include('../nav') -%>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="bottom-nav-item" onclick="window.location='/home'"><span class="bottom-nav-icon">&#8962;</span>Home</div>
+            <div class="bottom-nav-item" onclick="window.location='/checkIn'"><span class="bottom-nav-icon">&#127942;</span>Activity</div>
+            <div class="bottom-nav-item" onclick="window.location='/promotion'"><span class="bottom-nav-icon">&#128142;</span>Promotion</div>
+            <div class="bottom-nav-item active" onclick="window.location='/wallet'"><span class="bottom-nav-icon">&#128179;</span>Wallet</div>
+            <div class="bottom-nav-item" onclick="window.location='/mian'"><span class="bottom-nav-icon">&#128100;</span>Account</div>
         </div>
     </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="/js/client.js"></script>
-        <script>
+    <script>
         let selectedFdPlan = 10;
+        let latestFixedDepositSummary = null;
 
         function formatMoney(value) {
             return '$' + Number(value || 0).toFixed(2);
@@ -386,161 +482,192 @@
 
         function formatDate(value) {
             if (!value) return '--';
-            return new Date(Number(value)).toLocaleString();
+            return new Date(Number(value)).toLocaleDateString() + ' ' + new Date(Number(value)).toLocaleTimeString();
         }
 
-        function renderFdSummary(fd) {
-            const summary = fd || {
-                plans: [],
-                history: [],
-                lockedAmount: 0,
-                withdrawableAmount: 0,
-                projectedInterest: 0,
-                projectedMaturityAmount: 0
-            };
+        function notify(message) {
+            window.alert(message);
+        }
 
-            $('#fdLockedAmount').text(formatMoney(summary.lockedAmount));
-            $('#fdWithdrawableAmount').text(formatMoney(summary.withdrawableAmount));
-            $('#fdProjectedInterest').text(formatMoney(summary.projectedInterest));
-            $('#fdMaturityAmount').text(formatMoney(summary.projectedMaturityAmount));
-
-            const plansHtml = (summary.plans || []).map((plan) => `
-                <div class="fd-plan ${Number(plan.days) === Number(selectedFdPlan) ? 'active' : ''}" data-days="${plan.days}">
-                    <div class="fd-plan-top">
-                        <span>${plan.days} Days</span>
-                        <span class="fd-plan-rate">${Number(plan.dailyRate).toFixed(2)}% / day</span>
+        function renderPlans(plans) {
+            const html = (plans || []).map((plan) => `
+                <div class="plan-card ${Number(plan.days) === Number(selectedFdPlan) ? 'active' : ''}" data-days="${plan.days}">
+                    <div class="plan-top">
+                        <span>${plan.days} days</span>
+                        <span class="plan-rate">${Number(plan.dailyRate).toFixed(2)}% daily</span>
                     </div>
-                    <div class="fd-plan-note">Funds stay locked until the ${plan.days}-day tenure is complete.</div>
+                    <div class="plan-note">Withdraw only after ${plan.days} full days. Daily payout rate is ${Number(plan.dailyRate).toFixed(2)}%.</div>
                 </div>
             `).join('');
-            $('#fdPlans').html(plansHtml);
+            $('#fdPlans').html(html);
+        }
 
-            const history = summary.history || [];
+        function renderHistory(summary) {
+            const history = (summary && summary.history) || [];
             if (!history.length) {
-                $('#fdHistory').html('<div class="fd-empty">No fixed deposits yet.</div>');
+                $('#fdHistory').html('<div class="empty-state">No fixed deposit records yet.</div>');
                 return;
             }
 
-            const historyHtml = history.map((item) => {
-                const statusClass = item.status === 'matured' ? 'matured' : '';
-                const actionButton = item.status === 'matured'
-                    ? `<button class="fd-button secondary fd-withdraw-button" data-id="${item.id}">Withdraw</button>`
+            const html = history.map((item) => {
+                const isWithdrawn = item.status === 'withdrawn';
+                const isMatured = item.status === 'matured';
+                const tagClass = isWithdrawn ? 'out' : 'in';
+                const tagLabel = isWithdrawn ? 'Transfer Out' : 'Transfer In';
+                const action = isMatured
+                    ? `<button class="action-button secondary fd-withdraw-button" data-id="${item.id}" style="height:40px;margin-top:10px;">Withdraw Matured FD</button>`
                     : '';
 
                 return `
-                    <div class="fd-history-item">
-                        <div class="fd-history-head">
-                            <span>${formatMoney(item.amount)} for ${item.tenureDays} days</span>
-                            <span class="fd-history-status ${statusClass}">${item.status}</span>
+                    <div class="record-card">
+                        <div class="record-tag ${tagClass}">${tagLabel}</div>
+                        <div class="record-row">
+                            <span class="label">Amount</span>
+                            <span class="value ${isWithdrawn ? 'orange' : 'orange'}">${isWithdrawn ? '-' : '+'}${formatMoney(item.amount)}</span>
                         </div>
-                        <div class="fd-history-meta">Rate: ${Number(item.dailyRate).toFixed(2)}% daily</div>
-                        <div class="fd-history-meta">Projected interest: ${formatMoney(item.totalInterest)}</div>
-                        <div class="fd-history-meta">Maturity amount: ${formatMoney(item.maturityAmount)}</div>
-                        <div class="fd-history-meta">Start: ${formatDate(item.startTime)}</div>
-                        <div class="fd-history-meta">Maturity: ${formatDate(item.maturityTime)}</div>
-                        <div style="margin-top:.16rem;">${actionButton}</div>
+                        <div class="record-row">
+                            <span class="label">Daily interest rate</span>
+                            <span class="value green">${Number(item.dailyRate).toFixed(2)}%</span>
+                        </div>
+                        <div class="record-row">
+                            <span class="label">Payout income</span>
+                            <span class="value orange">${formatMoney(item.totalInterest)}</span>
+                        </div>
+                        <div class="record-row">
+                            <span class="label">Maturity amount</span>
+                            <span class="value">${formatMoney(item.maturityAmount)}</span>
+                        </div>
+                        <div class="record-footer">
+                            <span>${String(item.id).padStart(10, '0')}</span>
+                            <span>${formatDate(item.maturityTime)}</span>
+                        </div>
+                        ${action}
                     </div>
                 `;
             }).join('');
 
-            $('#fdHistory').html(historyHtml);
+            $('#fdHistory').html(html);
         }
 
-        function fetchWalletData(showAlertOnFail = false) {
+        function renderSummary(summary) {
+            latestFixedDepositSummary = summary;
+            const activeDeposits = (summary && summary.active) || [];
+            const weightedPlan = activeDeposits.length ? activeDeposits[0] : { dailyRate: selectedFdPlan === 10 ? 0.50 : selectedFdPlan === 30 ? 1.11 : 2.22 };
+            const generatedRevenue = activeDeposits.reduce((total, item) => total + Number(item.earnedInterest || 0), 0);
+            const accumulatedRevenue = activeDeposits.reduce((total, item) => total + Number(item.totalInterest || 0), 0);
+            const dailyRevenue = activeDeposits.reduce((total, item) => total + ((Number(item.amount || 0) * Number(item.dailyRate || 0)) / 100), 0);
+
+            $('#fdLockedAmount').text(formatMoney(summary ? summary.lockedAmount : 0));
+            $('#fdDailyRevenue').text(formatMoney(dailyRevenue));
+            $('#fdGeneratedRevenue').text(formatMoney(generatedRevenue));
+            $('#fdAccumulatedRevenue').text(formatMoney(accumulatedRevenue));
+            $('#fdRateLabel').text(`My interest rate ${Number(weightedPlan.dailyRate || 0).toFixed(2)}`);
+
+            renderPlans(summary ? summary.plans : []);
+            renderHistory(summary || {});
+        }
+
+        function loadWallet() {
             $.ajax({
-                type: "GET",
-                url: "/api/webapi/GetUserInfo",
-                dataType: "json",
+                type: 'GET',
+                url: '/api/webapi/GetUserInfo',
+                dataType: 'json',
+                timeout: 10000,
                 success: function (response) {
                     if (response.status !== true) {
-                        if (showAlertOnFail) {
-                            alert(response.message || 'Failed to load wallet');
-                        }
+                        notify(response.message || 'Failed to load wallet');
                         return;
                     }
-
-                    let user = response.data || {};
-                    $('.wallet-user .name').text(user.name_user || '');
-                    $('.money').text(formatMoney(user.money_user));
-                    $('.balance .item:eq(0) div:eq(1)').text(formatMoney(response.totalWithdraw));
-                    $('.balance .item:eq(1) div:eq(1)').text(formatMoney(response.freeBonus));
-                    renderFdSummary(response.fixedDeposit);
+                    renderSummary(response.fixedDeposit || {
+                        plans: [
+                            { days: 10, dailyRate: 0.50 },
+                            { days: 30, dailyRate: 1.11 },
+                            { days: 90, dailyRate: 2.22 }
+                        ],
+                        active: [],
+                        history: [],
+                        lockedAmount: 0,
+                        projectedInterest: 0,
+                        projectedMaturityAmount: 0,
+                        withdrawableAmount: 0
+                    });
                 },
                 error: function () {
-                    if (showAlertOnFail) {
-                        alert('Failed to load wallet');
-                    }
+                    notify('Wallet data is not responding properly.');
                 }
             });
         }
 
-        $('#reload .van-image').click(function (e) {
-            e.preventDefault();
-            $(this).addClass('action block-click');
-            setTimeout(() => {
-                $(this).removeClass('action block-click');
-            }, 2500);
-            fetchWalletData(true);
-        });
-
-        $(document).on('click', '.fd-plan', function () {
-            selectedFdPlan = Number($(this).data('days'));
-            $('.fd-plan').removeClass('active');
-            $(this).addClass('active');
-        });
-
-        $('#fdCreateButton').click(function () {
+        function createFd() {
             const amount = Number($('#fdAmount').val());
             if (!amount || amount <= 0) {
-                alert('Please enter a valid FD amount');
+                notify('Please enter a valid amount.');
                 return;
             }
 
             $.ajax({
-                type: "POST",
-                url: "/api/webapi/fd/create",
+                type: 'POST',
+                url: '/api/webapi/fd/create',
+                dataType: 'json',
                 data: {
-                    amount: amount,
+                    amount,
                     tenureDays: selectedFdPlan
                 },
-                dataType: "json",
                 success: function (response) {
-                    alert(response.message);
+                    notify(response.message);
                     if (response.status === true) {
                         $('#fdAmount').val('');
-                        fetchWalletData();
+                        renderSummary(response.data);
                     }
                 },
                 error: function () {
-                    alert('Failed to create FD');
+                    notify('FD transfer in failed.');
                 }
             });
+        }
+
+        function withdrawMaturedFd(depositId) {
+            $.ajax({
+                type: 'POST',
+                url: '/api/webapi/fd/withdraw',
+                dataType: 'json',
+                data: {
+                    depositId
+                },
+                success: function (response) {
+                    notify(response.message);
+                    if (response.status === true) {
+                        renderSummary(response.data);
+                    }
+                },
+                error: function () {
+                    notify('FD transfer out failed.');
+                }
+            });
+        }
+
+        $(document).on('click', '.plan-card', function () {
+            selectedFdPlan = Number($(this).data('days'));
+            if (latestFixedDepositSummary) {
+                renderSummary(latestFixedDepositSummary);
+            }
+        });
+
+        $('#fdCreateButton, #fdCreateAction').on('click', createFd);
+        $('#fdWithdrawAction').on('click', function () {
+            const matured = ((latestFixedDepositSummary && latestFixedDepositSummary.history) || []).find((item) => item.status === 'matured');
+            if (!matured) {
+                notify('No matured FD is available for transfer out yet.');
+                return;
+            }
+            withdrawMaturedFd(matured.id);
         });
 
         $(document).on('click', '.fd-withdraw-button', function () {
-            const depositId = Number($(this).data('id'));
-            $.ajax({
-                type: "POST",
-                url: "/api/webapi/fd/withdraw",
-                data: {
-                    depositId: depositId
-                },
-                dataType: "json",
-                success: function (response) {
-                    alert(response.message);
-                    if (response.status === true) {
-                        fetchWalletData();
-                    }
-                },
-                error: function () {
-                    alert('Failed to withdraw FD');
-                }
-            });
+            withdrawMaturedFd(Number($(this).data('id')));
         });
 
-        fetchWalletData();
+        loadWallet();
     </script>
 </body>
-
 </html>
-
