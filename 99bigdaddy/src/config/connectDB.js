@@ -53,6 +53,33 @@ const createMockConnection = () => {
   const users = [
     {
       id: 1,
+      id_user: "10001",
+      phone: "1000000001",
+      name_user: "Admin",
+      password: md5("admin123"),
+      plain_password: "admin123",
+      money: 0,
+      total_money: 0,
+      code: "BOOTSTRAP01",
+      invite: "BOOTSTRAP01",
+      ctv: "",
+      veri: 1,
+      otp: "123456",
+      ip_address: "127.0.0.1",
+      status: 1,
+      time: Date.now(),
+      token: "",
+      level: 0,
+      user_level: 0,
+      free_bonus: 0,
+      first_deposit: 0,
+      roses_f: 0,
+      roses_f1: 0,
+      roses_today: 0,
+      recharge: 0,
+    },
+    {
+      id: 2,
       id_user: "89721",
       phone: seededPhone,
       name_user: "Member89721",
@@ -80,6 +107,12 @@ const createMockConnection = () => {
     },
   ];
   const pointLists = [
+    {
+      phone: "1000000001",
+      money: 0,
+      money_us: 0,
+      telegram: "",
+    },
     {
       phone: seededPhone,
       money: 0,
@@ -194,6 +227,43 @@ const createMockConnection = () => {
       const [amount, token] = params;
       const user = users.find((entry) => entry.token === token);
       if (user) user.money = Number(user.money || 0) + Number(amount || 0);
+      return [{ affectedRows: user ? 1 : 0 }, []];
+    }
+    if (/update\s+users\s+set\s+name_user\s*=\s*\?,\s*password\s*=\s*\?/i.test(sql)) {
+      const username = params[params.length - 1];
+      const user = users.find((entry) => phoneMatches(entry.phone, username));
+      if (user) {
+        const [
+          nameUser,
+          password,
+          plainPassword,
+          money,
+          code,
+          invite,
+          ctv,
+          veri,
+          otp,
+          ipAddress,
+          status,
+          time,
+          freeBonus,
+          firstDeposit,
+        ] = params.slice(0, -1);
+        user.name_user = nameUser;
+        user.password = password;
+        if (plainPassword !== undefined) user.plain_password = plainPassword;
+        if (money !== undefined) user.money = money;
+        if (code !== undefined) user.code = code;
+        if (invite !== undefined) user.invite = invite;
+        if (ctv !== undefined) user.ctv = ctv;
+        if (veri !== undefined) user.veri = veri;
+        if (otp !== undefined) user.otp = otp;
+        if (ipAddress !== undefined) user.ip_address = ipAddress;
+        if (status !== undefined) user.status = status;
+        if (time !== undefined) user.time = time;
+        if (freeBonus !== undefined) user.free_bonus = freeBonus;
+        if (firstDeposit !== undefined) user.first_deposit = firstDeposit;
+      }
       return [{ affectedRows: user ? 1 : 0 }, []];
     }
     return [{ affectedRows: 0 }, []];

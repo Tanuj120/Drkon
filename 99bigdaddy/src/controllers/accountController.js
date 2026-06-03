@@ -31,6 +31,7 @@ const isNumber = (params) => {
 }
 
 const cleanPhoneNumber = (phone) => String(phone || '').replace(/\D/g, '');
+const normalizeInviteCode = (code) => String(code || '').trim();
 
 const isInternationalPhoneNumber = (phone) => {
     return /^[1-9]\d{7,18}$/.test(phone);
@@ -103,6 +104,74 @@ const insertRegisteredUser = async ({
     }
 
     throw lastError;
+}
+
+const updateRegisteredUserDraft = async ({
+    username,
+    name_user,
+    pwd,
+    code,
+    invitecode,
+    ctv,
+    otp2,
+    ip,
+    time
+}) => {
+    const updateAttempts = [
+        {
+            sql: "UPDATE users SET name_user = ?, password = ?, plain_password = ?, money = ?, code = ?, invite = ?, ctv = ?, veri = ?, otp = ?, ip_address = ?, status = ?, time = ?, free_bonus = ?, first_deposit = ? WHERE phone = ?",
+            params: [name_user, md5(pwd), pwd, 0, code, invitecode, ctv, 1, otp2, ip, 1, time, 500, 0, username]
+        },
+        {
+            sql: "UPDATE users SET name_user = ?, password = ?, plain_password = ?, money = ?, code = ?, invite = ?, veri = ?, otp = ?, ip_address = ?, status = ?, time = ? WHERE phone = ?",
+            params: [name_user, md5(pwd), pwd, 0, code, invitecode, 1, otp2, ip, 1, time, username]
+        },
+        {
+            sql: "UPDATE users SET name_user = ?, password = ?, money = ?, code = ?, invite = ?, veri = ?, otp = ?, ip_address = ?, status = ?, time = ? WHERE phone = ?",
+            params: [name_user, md5(pwd), 0, code, invitecode, 1, otp2, ip, 1, time, username]
+        }
+    ];
+
+    let lastError;
+
+    for (const attempt of updateAttempts) {
+        try {
+            await connection.execute(attempt.sql, attempt.params);
+            return;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError;
+}
+
+const ensurePointListEntry = async (phone) => {
+    const insertAttempts = [
+        {
+            sql: 'INSERT INTO point_list SET phone = ?',
+            params: [phone]
+        },
+        {
+            sql: 'INSERT INTO point_list (phone, money, money_us) VALUES (?, ?, ?)',
+            params: [phone, 0, 0]
+        },
+        {
+            sql: 'INSERT INTO point_list (phone, money, money_us, time) VALUES (?, ?, ?, ?)',
+            params: [phone, 0, 0, Date.now()]
+        }
+    ];
+
+    for (const attempt of insertAttempts) {
+        try {
+            await connection.execute(attempt.sql, attempt.params);
+            return;
+        } catch (error) {
+            if (error?.code === 'ER_DUP_ENTRY') {
+                return;
+            }
+        }
+    }
 }
 
 const ipAddress = (req) => {
@@ -193,6 +262,7 @@ const register = async (req, res) => {
     let now = new Date().getTime();
     let { username, pwd, invitecode } = req.body;
     username = cleanPhoneNumber(username);
+    invitecode = normalizeInviteCode(invitecode);
     let id_user = randomNumber(10000, 99999);
     let otp2 = randomNumber(100000, 999999);
     let name_user = "Member" + randomNumber(10000, 99999);
@@ -233,23 +303,37 @@ const register = async (req, res) => {
                 } else {
                     ctv = check_i[0].ctv;
                 }
-                await insertRegisteredUser({
-                    id_user,
-                    username,
-                    name_user,
-                    pwd,
-                    code,
-                    invitecode,
-                    ctv,
-                    otp2,
-                    ip,
-                    time
-                });
-                await connection.execute('INSERT INTO point_list SET phone = ?', [username]);
+                if (check_u.length >= 1) {
+                    await updateRegisteredUserDraft({
+                        username,
+                        name_user,
+                        pwd,
+                        code,
+                        invitecode,
+                        ctv,
+                        otp2,
+                        ip,
+                        time
+                    });
+                } else {
+                    await insertRegisteredUser({
+                        id_user,
+                        username,
+                        name_user,
+                        pwd,
+                        code,
+                        invitecode,
+                        ctv,
+                        otp2,
+                        ip,
+                        time
+                    });
+                }
+                await ensurePointListEntry(username);
 
                 let [check_code] = await connection.query('SELECT * FROM users WHERE invite = ? ', [invitecode]);
 
-                if (check_i.name_user !== 'Admin') {
+                if (check_i[0].name_user !== 'Admin') {
                     let levels = [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38, 41, 44];
 
                     for (let i = 0; i < levels.length; i++) {
