@@ -73,6 +73,170 @@
                 justify-content: center;
             }
         }
+
+        .fd-panel {
+            margin-top: .35rem;
+            background: #fff;
+            border-radius: .22rem;
+            padding: .32rem;
+            box-shadow: 0 0.08rem 0.22rem rgba(0, 0, 0, 0.08);
+        }
+
+        .fd-title {
+            font-size: .42rem;
+            font-weight: 700;
+            color: #8f5206;
+            margin-bottom: .15rem;
+        }
+
+        .fd-subtitle {
+            font-size: .28rem;
+            color: #777;
+            margin-bottom: .28rem;
+        }
+
+        .fd-stats {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .2rem;
+            margin-bottom: .28rem;
+        }
+
+        .fd-stat {
+            background: linear-gradient(135deg, #fff8e8, #fff);
+            border: 1px solid #f3dfb1;
+            border-radius: .18rem;
+            padding: .22rem;
+        }
+
+        .fd-stat-label {
+            font-size: .24rem;
+            color: #8a8a8a;
+            margin-bottom: .08rem;
+        }
+
+        .fd-stat-value {
+            font-size: .36rem;
+            color: #8f5206;
+            font-weight: 700;
+        }
+
+        .fd-plans {
+            display: flex;
+            flex-direction: column;
+            gap: .18rem;
+            margin-bottom: .26rem;
+        }
+
+        .fd-plan {
+            border: 1px solid #f1d58d;
+            border-radius: .2rem;
+            padding: .22rem;
+            background: #fffdf7;
+            cursor: pointer;
+        }
+
+        .fd-plan.active {
+            border-color: #d9a23b;
+            background: linear-gradient(135deg, #fff3cf, #fffdf8);
+            box-shadow: 0 0.06rem 0.18rem rgba(217, 162, 59, 0.18);
+        }
+
+        .fd-plan-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: .08rem;
+            font-weight: 700;
+            color: #754200;
+        }
+
+        .fd-plan-rate {
+            color: #e67e22;
+        }
+
+        .fd-plan-note {
+            font-size: .24rem;
+            color: #7c7c7c;
+        }
+
+        .fd-form {
+            display: flex;
+            gap: .18rem;
+            align-items: stretch;
+            margin-bottom: .28rem;
+        }
+
+        .fd-input {
+            flex: 1;
+            border: 1px solid #e3e3e3;
+            border-radius: .18rem;
+            padding: 0 .22rem;
+            font-size: .32rem;
+            min-height: .96rem;
+        }
+
+        .fd-button {
+            border: none;
+            border-radius: .18rem;
+            padding: 0 .34rem;
+            min-height: .96rem;
+            background: linear-gradient(90deg, #ffd01e, #ff8917);
+            color: #6a3b00;
+            font-weight: 700;
+            font-size: .3rem;
+            cursor: pointer;
+        }
+
+        .fd-button.secondary {
+            min-height: .74rem;
+            padding: 0 .28rem;
+            font-size: .26rem;
+        }
+
+        .fd-history {
+            display: flex;
+            flex-direction: column;
+            gap: .18rem;
+        }
+
+        .fd-history-item {
+            border: 1px solid #f1f1f1;
+            border-radius: .18rem;
+            padding: .22rem;
+            background: #fafafa;
+        }
+
+        .fd-history-head {
+            display: flex;
+            justify-content: space-between;
+            gap: .16rem;
+            font-weight: 700;
+            color: #5f5f5f;
+            margin-bottom: .08rem;
+        }
+
+        .fd-history-meta {
+            font-size: .24rem;
+            color: #868686;
+            line-height: 1.5;
+        }
+
+        .fd-history-status {
+            color: #e67e22;
+            text-transform: capitalize;
+        }
+
+        .fd-history-status.matured {
+            color: #2e8b57;
+        }
+
+        .fd-empty {
+            color: #8d8d8d;
+            font-size: .28rem;
+            text-align: center;
+            padding: .25rem 0;
+        }
     </style>
 </head>
 
@@ -174,6 +338,36 @@
 
                         </div>
 
+                        <div class="fd-panel">
+                            <div class="fd-title">Fixed Deposit Vault</div>
+                            <div class="fd-subtitle">Lock wallet funds for a fixed tenure and withdraw only after maturity.</div>
+                            <div class="fd-stats">
+                                <div class="fd-stat">
+                                    <div class="fd-stat-label">Locked Amount</div>
+                                    <div class="fd-stat-value" id="fdLockedAmount">$0.00</div>
+                                </div>
+                                <div class="fd-stat">
+                                    <div class="fd-stat-label">Withdrawable on Maturity</div>
+                                    <div class="fd-stat-value" id="fdWithdrawableAmount">$0.00</div>
+                                </div>
+                                <div class="fd-stat">
+                                    <div class="fd-stat-label">Projected Interest</div>
+                                    <div class="fd-stat-value" id="fdProjectedInterest">$0.00</div>
+                                </div>
+                                <div class="fd-stat">
+                                    <div class="fd-stat-label">Projected Maturity Value</div>
+                                    <div class="fd-stat-value" id="fdMaturityAmount">$0.00</div>
+                                </div>
+                            </div>
+                            <div class="fd-plans" id="fdPlans"></div>
+                            <div class="fd-form">
+                                <input id="fdAmount" class="fd-input" type="number" min="1" step="0.01" placeholder="Enter FD amount">
+                                <button id="fdCreateButton" class="fd-button">Create FD</button>
+                            </div>
+                            <div class="fd-title" style="font-size:.34rem;">Your FD Records</div>
+                            <div class="fd-history" id="fdHistory"></div>
+                        </div>
+
                     </div>
 
                 </div>
@@ -183,7 +377,102 @@
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="/js/client.js"></script>
-    <script>
+        <script>
+        let selectedFdPlan = 10;
+
+        function formatMoney(value) {
+            return '$' + Number(value || 0).toFixed(2);
+        }
+
+        function formatDate(value) {
+            if (!value) return '--';
+            return new Date(Number(value)).toLocaleString();
+        }
+
+        function renderFdSummary(fd) {
+            const summary = fd || {
+                plans: [],
+                history: [],
+                lockedAmount: 0,
+                withdrawableAmount: 0,
+                projectedInterest: 0,
+                projectedMaturityAmount: 0
+            };
+
+            $('#fdLockedAmount').text(formatMoney(summary.lockedAmount));
+            $('#fdWithdrawableAmount').text(formatMoney(summary.withdrawableAmount));
+            $('#fdProjectedInterest').text(formatMoney(summary.projectedInterest));
+            $('#fdMaturityAmount').text(formatMoney(summary.projectedMaturityAmount));
+
+            const plansHtml = (summary.plans || []).map((plan) => `
+                <div class="fd-plan ${Number(plan.days) === Number(selectedFdPlan) ? 'active' : ''}" data-days="${plan.days}">
+                    <div class="fd-plan-top">
+                        <span>${plan.days} Days</span>
+                        <span class="fd-plan-rate">${Number(plan.dailyRate).toFixed(2)}% / day</span>
+                    </div>
+                    <div class="fd-plan-note">Funds stay locked until the ${plan.days}-day tenure is complete.</div>
+                </div>
+            `).join('');
+            $('#fdPlans').html(plansHtml);
+
+            const history = summary.history || [];
+            if (!history.length) {
+                $('#fdHistory').html('<div class="fd-empty">No fixed deposits yet.</div>');
+                return;
+            }
+
+            const historyHtml = history.map((item) => {
+                const statusClass = item.status === 'matured' ? 'matured' : '';
+                const actionButton = item.status === 'matured'
+                    ? `<button class="fd-button secondary fd-withdraw-button" data-id="${item.id}">Withdraw</button>`
+                    : '';
+
+                return `
+                    <div class="fd-history-item">
+                        <div class="fd-history-head">
+                            <span>${formatMoney(item.amount)} for ${item.tenureDays} days</span>
+                            <span class="fd-history-status ${statusClass}">${item.status}</span>
+                        </div>
+                        <div class="fd-history-meta">Rate: ${Number(item.dailyRate).toFixed(2)}% daily</div>
+                        <div class="fd-history-meta">Projected interest: ${formatMoney(item.totalInterest)}</div>
+                        <div class="fd-history-meta">Maturity amount: ${formatMoney(item.maturityAmount)}</div>
+                        <div class="fd-history-meta">Start: ${formatDate(item.startTime)}</div>
+                        <div class="fd-history-meta">Maturity: ${formatDate(item.maturityTime)}</div>
+                        <div style="margin-top:.16rem;">${actionButton}</div>
+                    </div>
+                `;
+            }).join('');
+
+            $('#fdHistory').html(historyHtml);
+        }
+
+        function fetchWalletData(showAlertOnFail = false) {
+            $.ajax({
+                type: "GET",
+                url: "/api/webapi/GetUserInfo",
+                dataType: "json",
+                success: function (response) {
+                    if (response.status !== true) {
+                        if (showAlertOnFail) {
+                            alert(response.message || 'Failed to load wallet');
+                        }
+                        return;
+                    }
+
+                    let user = response.data || {};
+                    $('.wallet-user .name').text(user.name_user || '');
+                    $('.money').text(formatMoney(user.money_user));
+                    $('.balance .item:eq(0) div:eq(1)').text(formatMoney(response.totalWithdraw));
+                    $('.balance .item:eq(1) div:eq(1)').text(formatMoney(response.freeBonus));
+                    renderFdSummary(response.fixedDeposit);
+                },
+                error: function () {
+                    if (showAlertOnFail) {
+                        alert('Failed to load wallet');
+                    }
+                }
+            });
+        }
 
         $('#reload .van-image').click(function (e) {
             e.preventDefault();
@@ -191,31 +480,67 @@
             setTimeout(() => {
                 $(this).removeClass('action block-click');
             }, 2500);
+            fetchWalletData(true);
+        });
+
+        $(document).on('click', '.fd-plan', function () {
+            selectedFdPlan = Number($(this).data('days'));
+            $('.fd-plan').removeClass('active');
+            $(this).addClass('active');
+        });
+
+        $('#fdCreateButton').click(function () {
+            const amount = Number($('#fdAmount').val());
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid FD amount');
+                return;
+            }
+
             $.ajax({
-                type: "GET",
-                url: "/api/webapi/GetUserInfo",
+                type: "POST",
+                url: "/api/webapi/fd/create",
+                data: {
+                    amount: amount,
+                    tenureDays: selectedFdPlan
+                },
                 dataType: "json",
                 success: function (response) {
-                    let user = response.data;
-                    $('.wallet-user .name').text(user.name_user);
-                    $('.money').text("₹" + user.money_user);
+                    alert(response.message);
+                    if (response.status === true) {
+                        $('#fdAmount').val('');
+                        fetchWalletData();
+                    }
+                },
+                error: function () {
+                    alert('Failed to create FD');
                 }
             });
         });
-        $.ajax({
-            type: "GET",
-            url: "/api/webapi/GetUserInfo",
-            dataType: "json",
-            success: function (response) {
-                let user = response.data;
-                $('.wallet-user .name').text(user.name_user);
-                $('.money').text("₹" + user.money_user);
-                $('.balance .item:eq(0) div:eq(1)').text("₹" + response.totalWithdraw + ".00");
-                $('.balance .item:eq(1) div:eq(1)').text("₹" + response.freeBonus + ".00");
-                // $('.balance .free-bonus div:eq(1)').text("₹" + response.freeBonus + ".00");
-            }
+
+        $(document).on('click', '.fd-withdraw-button', function () {
+            const depositId = Number($(this).data('id'));
+            $.ajax({
+                type: "POST",
+                url: "/api/webapi/fd/withdraw",
+                data: {
+                    depositId: depositId
+                },
+                dataType: "json",
+                success: function (response) {
+                    alert(response.message);
+                    if (response.status === true) {
+                        fetchWalletData();
+                    }
+                },
+                error: function () {
+                    alert('Failed to withdraw FD');
+                }
+            });
         });
+
+        fetchWalletData();
     </script>
 </body>
 
 </html>
+

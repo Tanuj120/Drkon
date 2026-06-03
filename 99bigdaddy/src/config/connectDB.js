@@ -95,6 +95,9 @@ const createMockConnection = () => {
       cskh: "",
     },
   ];
+  const recharges = [];
+  const withdraws = [];
+  const fixedDeposits = [];
 
   const selectUsers = (sql, params = []) => {
     let rows = users;
@@ -134,6 +137,31 @@ const createMockConnection = () => {
     return rows.map((row) => pickFields(row, sql));
   };
 
+  const selectRowsByPhone = (rows = [], sql, params = []) => {
+    let filtered = rows;
+    if (/where\s+`?phone`?\s*=\s*\?/i.test(sql)) {
+      const [phone] = params;
+      filtered = rows.filter((row) => phoneMatches(row.phone, phone));
+    }
+    if (/where\s+`?status`?\s*=\s*\?/i.test(sql)) {
+      const statusParam = params[params.length - 1];
+      filtered = filtered.filter((row) => String(row.status) === String(statusParam));
+    }
+    return filtered.map((row) => pickFields(row, sql));
+  };
+
+  const selectFixedDeposits = (sql, params = []) => {
+    let rows = fixedDeposits;
+    if (/where\s+id\s*=\s*\?\s+and\s+phone\s*=\s*\?/i.test(sql)) {
+      const [id, phone] = params;
+      rows = fixedDeposits.filter((row) => Number(row.id) === Number(id) && phoneMatches(row.phone, phone));
+    } else if (/where\s+phone\s*=\s*\?/i.test(sql)) {
+      const [phone] = params;
+      rows = fixedDeposits.filter((row) => phoneMatches(row.phone, phone));
+    }
+    return rows.map((row) => pickFields(row, sql));
+  };
+
   const updateUsers = (sql, params = []) => {
     if (/set\s+`?token`?\s*=\s*\?\s+where\s+`?phone`?\s*=\s*\?/i.test(sql)) {
       const [token, phone] = params;
@@ -155,6 +183,31 @@ const createMockConnection = () => {
         user.password = password;
       }
       return [{ affectedRows: user ? 1 : 0 }, []];
+    }
+    if (/set\s+money\s*=\s*money\s*-\s*\?\s+where\s+token\s*=\s*\?/i.test(sql)) {
+      const [amount, token] = params;
+      const user = users.find((entry) => entry.token === token);
+      if (user) user.money = Number(user.money || 0) - Number(amount || 0);
+      return [{ affectedRows: user ? 1 : 0 }, []];
+    }
+    if (/set\s+money\s*=\s*money\s*\+\s*\?\s+where\s+token\s*=\s*\?/i.test(sql)) {
+      const [amount, token] = params;
+      const user = users.find((entry) => entry.token === token);
+      if (user) user.money = Number(user.money || 0) + Number(amount || 0);
+      return [{ affectedRows: user ? 1 : 0 }, []];
+    }
+    return [{ affectedRows: 0 }, []];
+  };
+
+  const updateFixedDeposits = (sql, params = []) => {
+    if (/set\s+status\s*=\s*\?,\s*withdrawn_time\s*=\s*\?\s+where\s+id\s*=\s*\?/i.test(sql)) {
+      const [status, withdrawnTime, id] = params;
+      const row = fixedDeposits.find((entry) => Number(entry.id) === Number(id));
+      if (row) {
+        row.status = status;
+        row.withdrawn_time = withdrawnTime;
+      }
+      return [{ affectedRows: row ? 1 : 0 }, []];
     }
     return [{ affectedRows: 0 }, []];
   };
@@ -218,6 +271,25 @@ const createMockConnection = () => {
     return [{ affectedRows: 1, insertId: pointLists.length }, []];
   };
 
+  const insertFixedDeposit = (params = []) => {
+    const [phone, amount, tenureDays, dailyRate, totalInterest, maturityAmount, status, startTime, maturityTime, withdrawnTime, createdAt] = params;
+    fixedDeposits.push({
+      id: fixedDeposits.length + 1,
+      phone,
+      amount,
+      tenure_days: tenureDays,
+      daily_rate: dailyRate,
+      total_interest: totalInterest,
+      maturity_amount: maturityAmount,
+      status,
+      start_time: startTime,
+      maturity_time: maturityTime,
+      withdrawn_time: withdrawnTime,
+      created_at: createdAt,
+    });
+    return [{ affectedRows: 1, insertId: fixedDeposits.length }, []];
+  };
+
   const runMockQuery = async (sql, params = []) => {
     if (/select\s+1\s*\+\s*1\s+as\s+solution/i.test(sql)) {
       return [[{ solution: 2 }], []];
@@ -228,17 +300,32 @@ const createMockConnection = () => {
     if (/^\s*select/i.test(sql) && /from\s+point_list/i.test(sql)) {
       return [selectPointList(sql, params), []];
     }
+    if (/^\s*select/i.test(sql) && /from\s+recharge/i.test(sql)) {
+      return [selectRowsByPhone(recharges, sql, params), []];
+    }
+    if (/^\s*select/i.test(sql) && /from\s+withdraw/i.test(sql)) {
+      return [selectRowsByPhone(withdraws, sql, params), []];
+    }
+    if (/^\s*select/i.test(sql) && /from\s+fixed_deposits/i.test(sql)) {
+      return [selectFixedDeposits(sql, params), []];
+    }
     if (/^\s*select/i.test(sql) && /from\s+admin/i.test(sql)) {
       return [adminRows.map((row) => pickFields(row, sql)), []];
     }
     if (/^\s*update\s+`?users`?/i.test(sql)) {
       return updateUsers(sql, params);
     }
+    if (/^\s*update\s+fixed_deposits/i.test(sql)) {
+      return updateFixedDeposits(sql, params);
+    }
     if (/^\s*insert\s+into\s+users/i.test(sql)) {
       return insertUsers(params);
     }
     if (/^\s*insert\s+into\s+point_list/i.test(sql)) {
       return insertPointList(params);
+    }
+    if (/^\s*insert\s+into\s+fixed_deposits/i.test(sql)) {
+      return insertFixedDeposit(params);
     }
     return [[], []];
   };

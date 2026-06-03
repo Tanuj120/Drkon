@@ -338,4 +338,22 @@ CREATE TABLE IF NOT EXISTS `turn_over` (
   KEY `idx_turn_over_phone` (`phone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `fixed_deposits` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `phone` VARCHAR(20) NOT NULL,
+  `amount` DECIMAL(20,2) NOT NULL DEFAULT 0,
+  `tenure_days` INT NOT NULL,
+  `daily_rate` DECIMAL(10,2) NOT NULL DEFAULT 0,
+  `total_interest` DECIMAL(20,2) NOT NULL DEFAULT 0,
+  `maturity_amount` DECIMAL(20,2) NOT NULL DEFAULT 0,
+  `status` VARCHAR(20) NOT NULL DEFAULT 'active',
+  `start_time` BIGINT NOT NULL DEFAULT 0,
+  `maturity_time` BIGINT NOT NULL DEFAULT 0,
+  `withdrawn_time` BIGINT NOT NULL DEFAULT 0,
+  `created_at` BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_fixed_deposits_phone_status` (`phone`, `status`),
+  KEY `idx_fixed_deposits_maturity` (`maturity_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 SET FOREIGN_KEY_CHECKS = 1;

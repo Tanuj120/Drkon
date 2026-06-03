@@ -6,6 +6,114 @@ import request from 'request';
 import axios from 'axios';
 let timeNow = Date.now();
 
+const FIXED_DEPOSIT_PLANS = [
+    { days: 10, dailyRate: 0.50 },
+    { days: 30, dailyRate: 1.11 },
+    { days: 90, dailyRate: 2.22 },
+];
+
+const formatMoney = (value) => Number(Number(value || 0).toFixed(2));
+
+const getFixedDepositPlan = (days) => {
+    return FIXED_DEPOSIT_PLANS.find((plan) => Number(plan.days) === Number(days));
+}
+
+const ensureFixedDepositsTable = async () => {
+    await connection.execute(`
+        CREATE TABLE IF NOT EXISTS fixed_deposits (
+            id INT NOT NULL AUTO_INCREMENT,
+            phone VARCHAR(20) NOT NULL,
+            amount DECIMAL(20,2) NOT NULL DEFAULT 0,
+            tenure_days INT NOT NULL,
+            daily_rate DECIMAL(10,2) NOT NULL DEFAULT 0,
+            total_interest DECIMAL(20,2) NOT NULL DEFAULT 0,
+            maturity_amount DECIMAL(20,2) NOT NULL DEFAULT 0,
+            status VARCHAR(20) NOT NULL DEFAULT 'active',
+            start_time BIGINT NOT NULL DEFAULT 0,
+            maturity_time BIGINT NOT NULL DEFAULT 0,
+            withdrawn_time BIGINT NOT NULL DEFAULT 0,
+            created_at BIGINT NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            KEY idx_fixed_deposits_phone_status (phone, status),
+            KEY idx_fixed_deposits_maturity (maturity_time)
+        )
+    `);
+}
+
+const getUserByAuth = async (auth) => {
+    const [userRows] = await connection.query('SELECT * FROM users WHERE `token` = ? ', [auth]);
+    if (!userRows || userRows.length === 0) {
+        return null;
+    }
+    return userRows[0];
+}
+
+const getFixedDepositRows = async (phone) => {
+    await ensureFixedDepositsTable();
+    const [rows] = await connection.query(
+        'SELECT * FROM fixed_deposits WHERE phone = ? ORDER BY created_at DESC, id DESC',
+        [phone]
+    );
+    return rows || [];
+}
+
+const buildFixedDepositSummary = (rows = []) => {
+    const now = Date.now();
+    const active = [];
+    const history = [];
+    let lockedAmount = 0;
+    let projectedInterest = 0;
+    let projectedMaturityAmount = 0;
+    let withdrawableAmount = 0;
+
+    rows.forEach((row) => {
+        const amount = formatMoney(row.amount);
+        const totalInterest = formatMoney(row.total_interest);
+        const maturityAmount = formatMoney(row.maturity_amount);
+        const tenureDays = Number(row.tenure_days || 0);
+        const startTime = Number(row.start_time || 0);
+        const maturityTime = Number(row.maturity_time || 0);
+        const elapsedDays = Math.max(0, Math.floor((Math.min(now, maturityTime) - startTime) / 86400000));
+        const earnedInterest = formatMoney((amount * Number(row.daily_rate || 0) * Math.min(elapsedDays, tenureDays)) / 100);
+        const status = row.status === 'withdrawn' ? 'withdrawn' : (maturityTime <= now ? 'matured' : 'active');
+
+        const normalized = {
+            id: row.id,
+            amount,
+            tenureDays,
+            dailyRate: formatMoney(row.daily_rate),
+            totalInterest,
+            maturityAmount,
+            startTime,
+            maturityTime,
+            withdrawnTime: Number(row.withdrawn_time || 0),
+            earnedInterest,
+            status
+        };
+
+        history.push(normalized);
+        if (row.status !== 'withdrawn') {
+            active.push(normalized);
+            lockedAmount += amount;
+            projectedInterest += totalInterest;
+            projectedMaturityAmount += maturityAmount;
+            if (status === 'matured') {
+                withdrawableAmount += maturityAmount;
+            }
+        }
+    });
+
+    return {
+        plans: FIXED_DEPOSIT_PLANS,
+        active,
+        history,
+        lockedAmount: formatMoney(lockedAmount),
+        projectedInterest: formatMoney(projectedInterest),
+        projectedMaturityAmount: formatMoney(projectedMaturityAmount),
+        withdrawableAmount: formatMoney(withdrawableAmount),
+    };
+}
+
 const randomNumber = (min, max) => {
     return String(Math.floor(Math.random() * (max - min + 1)) + min);
 }
@@ -62,46 +170,240 @@ const userInfo = async (req, res) => {
             status: false,
             timeStamp: timeNow,
         });
-
     }
-    const [rows] = await connection.query('SELECT * FROM users WHERE `token` = ? ', [auth]);
 
-    if (!rows) {
+    try {
+        const user = await getUserByAuth(auth);
+        if (!user) {
+            return res.status(200).json({
+                message: 'Failed',
+                status: false,
+                timeStamp: timeNow,
+            });
+        }
+
+        let totalRecharge = 0;
+        let totalWithdraw = 0;
+
+        try {
+            const [recharge] = await connection.query('SELECT * FROM recharge WHERE `phone` = ? AND status = 1', [user.phone]);
+            recharge.forEach((data) => {
+                totalRecharge += Number(data.money || 0);
+            });
+        } catch (error) {}
+
+        try {
+            const [withdraw] = await connection.query('SELECT * FROM withdraw WHERE `phone` = ? AND status = 1', [user.phone]);
+            withdraw.forEach((data) => {
+                totalWithdraw += Number(data.money || 0);
+            });
+        } catch (error) {}
+
+        let fixedDeposit = {
+            plans: FIXED_DEPOSIT_PLANS,
+            active: [],
+            history: [],
+            lockedAmount: 0,
+            projectedInterest: 0,
+            projectedMaturityAmount: 0,
+            withdrawableAmount: 0,
+        };
+
+        try {
+            fixedDeposit = buildFixedDepositSummary(await getFixedDepositRows(user.phone));
+        } catch (error) {}
+
+        const { id, password, ip, veri, ip_address, status, time, token, ...others } = user;
+        const free_bonus = others.free_bonus || 0;
         return res.status(200).json({
-            message: 'Failed',
+            message: 'Success',
+            status: true,
+            data: {
+                code: others.code,
+                id_user: others.id_user,
+                name_user: others.name_user,
+                phone_user: others.phone,
+                money_user: others.money,
+            },
+            totalRecharge: formatMoney(totalRecharge),
+            totalWithdraw: formatMoney(totalWithdraw),
+            freeBonus: formatMoney(free_bonus),
+            fixedDeposit,
+            timeStamp: timeNow,
+        });
+    } catch (error) {
+        return res.status(200).json({
+            message: 'Failed to load wallet data',
             status: false,
             timeStamp: timeNow,
         });
     }
-    const [recharge] = await connection.query('SELECT * FROM recharge WHERE `phone` = ? AND status = 1', [rows[0].phone]);
-    let totalRecharge = 0;
-    recharge.forEach((data) => {
-        totalRecharge += data.money;
-    });
-    const [withdraw] = await connection.query('SELECT * FROM withdraw WHERE `phone` = ? AND status = 1', [rows[0].phone]);
-    let totalWithdraw = 0;
-    withdraw.forEach((data) => {
-        totalWithdraw += data.money;
-    });
 
-    const { id, password, ip, veri, ip_address, status, time, token, ...others } = rows[0];
-    const free_bonus = others.free_bonus;
-    return res.status(200).json({
-        message: 'Success',
-        status: true,
-        data: {
-            code: others.code,
-            id_user: others.id_user,
-            name_user: others.name_user,
-            phone_user: others.phone,
-            money_user: others.money,
-        },
-        totalRecharge: totalRecharge,
-        totalWithdraw: totalWithdraw,
-        freeBonus: free_bonus,
-        timeStamp: timeNow,
-    });
+}
 
+const fixedDepositSummary = async (req, res) => {
+    const auth = req.cookies.auth;
+    if (!auth) {
+        return res.status(200).json({ message: 'Failed', status: false, timeStamp: timeNow });
+    }
+
+    try {
+        const user = await getUserByAuth(auth);
+        if (!user) {
+            return res.status(200).json({ message: 'Failed', status: false, timeStamp: timeNow });
+        }
+
+        return res.status(200).json({
+            message: 'Success',
+            status: true,
+            data: buildFixedDepositSummary(await getFixedDepositRows(user.phone)),
+            timeStamp: timeNow,
+        });
+    } catch (error) {
+        return res.status(200).json({
+            message: error?.message || 'Failed to load fixed deposits',
+            status: false,
+            timeStamp: timeNow,
+        });
+    }
+}
+
+const createFixedDeposit = async (req, res) => {
+    const auth = req.cookies.auth;
+    const amount = Number(req.body.amount);
+    const tenureDays = Number(req.body.tenureDays);
+
+    if (!auth || !amount || amount <= 0 || !tenureDays) {
+        return res.status(200).json({
+            message: 'Please enter a valid amount and plan',
+            status: false,
+            timeStamp: timeNow,
+        });
+    }
+
+    const plan = getFixedDepositPlan(tenureDays);
+    if (!plan) {
+        return res.status(200).json({
+            message: 'Invalid FD plan selected',
+            status: false,
+            timeStamp: timeNow,
+        });
+    }
+
+    try {
+        const user = await getUserByAuth(auth);
+        if (!user) {
+            return res.status(200).json({ message: 'Failed', status: false, timeStamp: timeNow });
+        }
+
+        const userBalance = Number(user.money || 0);
+        if (userBalance < amount) {
+            return res.status(200).json({
+                message: 'Insufficient wallet balance',
+                status: false,
+                timeStamp: timeNow,
+            });
+        }
+
+        await ensureFixedDepositsTable();
+
+        const now = Date.now();
+        const maturityTime = now + (plan.days * 86400000);
+        const totalInterest = formatMoney((amount * plan.dailyRate * plan.days) / 100);
+        const maturityAmount = formatMoney(amount + totalInterest);
+
+        await connection.execute('UPDATE users SET money = money - ? WHERE token = ?', [amount, auth]);
+        await connection.execute(
+            'INSERT INTO fixed_deposits (phone, amount, tenure_days, daily_rate, total_interest, maturity_amount, status, start_time, maturity_time, withdrawn_time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [user.phone, amount, plan.days, plan.dailyRate, totalInterest, maturityAmount, 'active', now, maturityTime, 0, now]
+        );
+
+        return res.status(200).json({
+            message: `FD created for ${plan.days} days`,
+            status: true,
+            data: buildFixedDepositSummary(await getFixedDepositRows(user.phone)),
+            timeStamp: timeNow,
+        });
+    } catch (error) {
+        return res.status(200).json({
+            message: error?.message || 'Failed to create FD',
+            status: false,
+            timeStamp: timeNow,
+        });
+    }
+}
+
+const withdrawFixedDeposit = async (req, res) => {
+    const auth = req.cookies.auth;
+    const depositId = Number(req.body.depositId);
+
+    if (!auth || !depositId) {
+        return res.status(200).json({
+            message: 'Invalid withdrawal request',
+            status: false,
+            timeStamp: timeNow,
+        });
+    }
+
+    try {
+        const user = await getUserByAuth(auth);
+        if (!user) {
+            return res.status(200).json({ message: 'Failed', status: false, timeStamp: timeNow });
+        }
+
+        await ensureFixedDepositsTable();
+        const [rows] = await connection.query(
+            'SELECT * FROM fixed_deposits WHERE id = ? AND phone = ? LIMIT 1',
+            [depositId, user.phone]
+        );
+
+        if (!rows || rows.length === 0) {
+            return res.status(200).json({
+                message: 'FD not found',
+                status: false,
+                timeStamp: timeNow,
+            });
+        }
+
+        const fd = rows[0];
+        if (fd.status === 'withdrawn') {
+            return res.status(200).json({
+                message: 'FD already withdrawn',
+                status: false,
+                timeStamp: timeNow,
+            });
+        }
+
+        if (Number(fd.maturity_time || 0) > Date.now()) {
+            return res.status(200).json({
+                message: 'You can withdraw this FD only after maturity',
+                status: false,
+                timeStamp: timeNow,
+            });
+        }
+
+        const payoutAmount = formatMoney(fd.maturity_amount);
+        const now = Date.now();
+
+        await connection.execute('UPDATE users SET money = money + ? WHERE token = ?', [payoutAmount, auth]);
+        await connection.execute(
+            'UPDATE fixed_deposits SET status = ?, withdrawn_time = ? WHERE id = ?',
+            ['withdrawn', now, depositId]
+        );
+
+        return res.status(200).json({
+            message: 'FD withdrawn successfully',
+            status: true,
+            data: buildFixedDepositSummary(await getFixedDepositRows(user.phone)),
+            timeStamp: timeNow,
+        });
+    } catch (error) {
+        return res.status(200).json({
+            message: error?.message || 'Failed to withdraw FD',
+            status: false,
+            timeStamp: timeNow,
+        });
+    }
 }
 
 const changeUser = async (req, res) => {
@@ -1846,6 +2148,9 @@ export default {
     withdrawal3,
     transfer,
     transferHistory,
+    fixedDepositSummary,
+    createFixedDeposit,
+    withdrawFixedDeposit,
     callback_bank,
     listMyTeam,
     verifyCode,

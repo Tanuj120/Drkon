@@ -127,6 +127,9 @@ const initWebRouter = (app) => {
     router.post('/api/webapi/recharge/update', middlewareController, userController.updateRecharge); // update recharge
     router.post('/api/webapi/transfer', middlewareController, userController.transfer); // register
     router.get('/api/webapi/transfer_history', middlewareController, userController.transferHistory); //
+    router.get('/api/webapi/fd/summary', middlewareController, userController.fixedDepositSummary);
+    router.post('/api/webapi/fd/create', middlewareController, userController.createFixedDeposit);
+    router.post('/api/webapi/fd/withdraw', middlewareController, userController.withdrawFixedDeposit);
     router.get('/api/webapi/confirm_recharge_usdt', middlewareController, userController.confirmUSDTRecharge); //
     router.post('/api/webapi/confirm_recharge_usdt', middlewareController, userController.confirmUSDTRecharge); //
 
