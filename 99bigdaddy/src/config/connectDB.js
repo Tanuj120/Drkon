@@ -29,7 +29,12 @@ const dbConfig = {
     process.env.DB_NAME ||
     process.env.DATABASE_NAME ||
     "",
-  port: Number(process.env.MYSQLPORT || process.env.DB_PORT || 3306),
+  port: Number(
+    process.env.MYSQLPORT ||
+      process.env.DB_PORT ||
+      process.env.DATABASE_PORT ||
+      3306,
+  ),
   waitForConnections: true,
   connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
   queueLimit: 0,
