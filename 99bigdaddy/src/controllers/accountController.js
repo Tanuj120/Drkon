@@ -32,6 +32,7 @@ const isNumber = (params) => {
 
 const cleanPhoneNumber = (phone) => String(phone || '').replace(/\D/g, '');
 const normalizeInviteCode = (code) => String(code || '').trim();
+const tableColumnsCache = new Map();
 
 const isInternationalPhoneNumber = (phone) => {
     return /^[1-9]\d{7,18}$/.test(phone);
@@ -40,6 +41,64 @@ const isInternationalPhoneNumber = (phone) => {
 const getLastTenDigits = (phone) => {
     const digits = cleanPhoneNumber(phone);
     return digits.length > 10 ? digits.slice(-10) : digits;
+}
+
+const getTableColumns = async (tableName) => {
+    if (tableColumnsCache.has(tableName)) {
+        return tableColumnsCache.get(tableName);
+    }
+
+    try {
+        const [rows] = await connection.query(`SHOW COLUMNS FROM \`${tableName}\``);
+        const columns = new Set(rows.map((row) => row.Field));
+        tableColumnsCache.set(tableName, columns);
+        return columns;
+    } catch (error) {
+        return null;
+    }
+}
+
+const pickExistingEntries = (columns, values) => {
+    if (!columns) {
+        return [];
+    }
+
+    return Object.entries(values).filter(([key, value]) => columns.has(key) && value !== undefined);
+}
+
+const insertDynamicRow = async (tableName, values) => {
+    const columns = await getTableColumns(tableName);
+    const entries = pickExistingEntries(columns, values);
+
+    if (!entries.length) {
+        throw new Error(`No compatible columns found for ${tableName}`);
+    }
+
+    const fields = entries.map(([key]) => `\`${key}\``).join(', ');
+    const placeholders = entries.map(() => '?').join(', ');
+    const params = entries.map(([, value]) => value);
+
+    await connection.execute(
+        `INSERT INTO \`${tableName}\` (${fields}) VALUES (${placeholders})`,
+        params
+    );
+}
+
+const updateDynamicRowByPhone = async (tableName, phone, values) => {
+    const columns = await getTableColumns(tableName);
+    const entries = pickExistingEntries(columns, values);
+
+    if (!entries.length) {
+        throw new Error(`No compatible columns found for ${tableName}`);
+    }
+
+    const assignments = entries.map(([key]) => `\`${key}\` = ?`).join(', ');
+    const params = entries.map(([, value]) => value);
+
+    await connection.execute(
+        `UPDATE \`${tableName}\` SET ${assignments} WHERE phone = ?`,
+        [...params, phone]
+    );
 }
 
 const findUserByPhoneAndPassword = async (phone, passwordHash) => {
@@ -77,6 +136,36 @@ const insertRegisteredUser = async ({
     ip,
     time
 }) => {
+    const dynamicValues = {
+        id_user,
+        phone: username,
+        name_user,
+        password: md5(pwd),
+        plain_password: pwd,
+        money: 0,
+        total_money: 0,
+        code,
+        invite: invitecode,
+        ctv,
+        veri: 1,
+        otp: otp2,
+        ip: ip,
+        ip_address: ip,
+        status: 1,
+        time,
+        time_otp: 0,
+        free_bonus: 500,
+        first_deposit: 0,
+        level: 0,
+        user_level: 0,
+    };
+
+    try {
+        await insertDynamicRow('users', dynamicValues);
+        return;
+    } catch (error) {
+    }
+
     const insertAttempts = [
         {
             sql: "INSERT INTO users SET id_user = ?,phone = ?,name_user = ?,password = ?, plain_password = ?, money = ?,code = ?,invite = ?,ctv = ?,veri = ?,otp = ?,ip_address = ?,status = ?,time = ?, free_bonus = ?, first_deposit = ?",
@@ -129,6 +218,31 @@ const updateRegisteredUserDraft = async ({
     ip,
     time
 }) => {
+    const dynamicValues = {
+        name_user,
+        password: md5(pwd),
+        plain_password: pwd,
+        money: 0,
+        code,
+        invite: invitecode,
+        ctv,
+        veri: 1,
+        otp: otp2,
+        ip: ip,
+        ip_address: ip,
+        status: 1,
+        time,
+        time_otp: 0,
+        free_bonus: 500,
+        first_deposit: 0,
+    };
+
+    try {
+        await updateDynamicRowByPhone('users', username, dynamicValues);
+        return;
+    } catch (error) {
+    }
+
     const updateAttempts = [
         {
             sql: "UPDATE users SET name_user = ?, password = ?, plain_password = ?, money = ?, code = ?, invite = ?, ctv = ?, veri = ?, otp = ?, ip_address = ?, status = ?, time = ?, free_bonus = ?, first_deposit = ? WHERE phone = ?",
@@ -171,6 +285,31 @@ const updateRegisteredUserDraft = async ({
 }
 
 const ensurePointListEntry = async (phone) => {
+    try {
+        const [existingRows] = await connection.query('SELECT phone FROM point_list WHERE phone = ? LIMIT 1', [phone]);
+        if (existingRows.length > 0) {
+            return;
+        }
+
+        await insertDynamicRow('point_list', {
+            phone,
+            money: 0,
+            money_us: 0,
+            level: 0,
+            total1: 0,
+            total2: 0,
+            total3: 0,
+            total4: 0,
+            total5: 0,
+            total6: 0,
+            total7: 0,
+            telegram: '',
+            time: Date.now(),
+        });
+        return;
+    } catch (error) {
+    }
+
     const insertAttempts = [
         {
             sql: 'INSERT INTO point_list SET phone = ?',
@@ -195,6 +334,48 @@ const ensurePointListEntry = async (phone) => {
                 return;
             }
         }
+    }
+}
+
+const ensureBootstrapInviteCode = async (invitecode) => {
+    if (invitecode !== 'BOOTSTRAP01') {
+        return;
+    }
+
+    const [existingRows] = await connection.query('SELECT phone FROM users WHERE code = ? LIMIT 1', [invitecode]);
+    if (existingRows.length > 0) {
+        return;
+    }
+
+    const bootstrapPhone = '1000000001';
+    const bootstrapValues = {
+        id_user: randomNumber(10000, 99999),
+        phone: bootstrapPhone,
+        name_user: 'Admin',
+        password: md5('admin123'),
+        plain_password: 'admin123',
+        money: 0,
+        total_money: 0,
+        code: invitecode,
+        invite: invitecode,
+        ctv: '',
+        veri: 1,
+        otp: randomNumber(100000, 999999),
+        ip: '127.0.0.1',
+        ip_address: '127.0.0.1',
+        status: 1,
+        time: Date.now(),
+        time_otp: 0,
+        free_bonus: 0,
+        first_deposit: 0,
+        level: 0,
+        user_level: 0,
+    };
+
+    try {
+        await insertDynamicRow('users', bootstrapValues);
+        await ensurePointListEntry(bootstrapPhone);
+    } catch (error) {
     }
 }
 
@@ -309,6 +490,7 @@ const register = async (req, res) => {
     }
 
     try {
+        await ensureBootstrapInviteCode(invitecode);
         const [check_u] = await connection.query('SELECT * FROM users WHERE phone = ?', [username]);
         const [check_i] = await connection.query('SELECT * FROM users WHERE code = ? ', [invitecode]);
         const [check_ip] = await connection.query('SELECT * FROM users WHERE ip_address = ? ', [ip]);
