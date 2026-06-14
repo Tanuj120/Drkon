@@ -11,6 +11,9 @@ const FIXED_DEPOSIT_PLANS = [
     { days: 30, dailyRate: 1.11 },
     { days: 90, dailyRate: 2.22 },
 ];
+const COPY_GAMING_AMOUNT_STEP = 500;
+const MINIMUM_DEPOSIT_AMOUNT = 500;
+const MINIMUM_WITHDRAW_AMOUNT = 1000;
 
 const formatMoney = (value) => Number(Number(value || 0).toFixed(2));
 
@@ -278,6 +281,14 @@ const createFixedDeposit = async (req, res) => {
     if (!auth || !amount || amount <= 0 || !tenureDays) {
         return res.status(200).json({
             message: 'Please enter a valid amount and plan',
+            status: false,
+            timeStamp: timeNow,
+        });
+    }
+
+    if (amount % COPY_GAMING_AMOUNT_STEP !== 0) {
+        return res.status(200).json({
+            message: 'Amount must be in multiples of 500',
             status: false,
             timeStamp: timeNow,
         });
@@ -1008,12 +1019,12 @@ const recharge = async (req, res) => {
     let type = req.body.type;
     let typeid = req.body.typeid;
 
-    const minimumMoney = process.env.MINIMUM_MONEY
+    const minimumMoney = MINIMUM_DEPOSIT_AMOUNT
 
     if (type != 'cancel') {
-        if (!auth || !money || money < minimumMoney - 1) {
+        if (!auth || !money || Number(money) < minimumMoney) {
             return res.status(200).json({
-                message: 'Failed',
+                message: 'Minimum deposit amount is 500',
                 status: false,
                 timeStamp: timeNow,
             })
@@ -1353,9 +1364,9 @@ const withdrawal3 = async (req, res) => {
     let auth = req.cookies.auth;
     let money = req.body.money;
     let password = req.body.password;
-    if (!auth || !money || !password || money < 299) {
+    if (!auth || !money || !password || Number(money) < MINIMUM_WITHDRAW_AMOUNT) {
         return res.status(200).json({
-            message: 'Failed',
+            message: 'Minimum withdrawal amount is 1000',
             status: false,
             timeStamp: timeNow,
         })

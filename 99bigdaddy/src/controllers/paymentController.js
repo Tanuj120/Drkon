@@ -6,6 +6,8 @@ import querystring from "querystring"
 import QRCode from 'qrcode'
 
 let timeNow = Date.now();
+const MINIMUM_DEPOSIT_AMOUNT = 500;
+const MINIMUM_USD_DEPOSIT_AMOUNT = 5;
 
 const PaymentStatusMap = {
     PENDING: 0,
@@ -43,12 +45,17 @@ const initiateManualUPIPayment = async (req, res) => {
         usdt_wallet_address: bank_recharge_momo_data?.qr_code_image || "",
     }
 
-    const amount = query?.am;
+    const amount = Number(query?.am);
+
+    if (!amount || amount < MINIMUM_DEPOSIT_AMOUNT) {
+        return res.redirect("/wallet/recharge");
+    }
+
     const qrCodeUrl = await generateUPIQRCode(momo.upi_id, amount);
 
     return res.render("wallet/manual_payment.ejs", {
 
-        Amount: query?.am,
+        Amount: amount,
         UpiId: momo.upi_id,
         QRCodeUrl: qrCodeUrl,
     });
@@ -71,8 +78,14 @@ const initiateManualUSDTPayment = async (req, res) => {
         usdt_wallet_address: bank_recharge_momo_data?.qr_code_image || "",
     }
 
+    const amount = Number(query?.am);
+
+    if (!amount || amount < MINIMUM_USD_DEPOSIT_AMOUNT) {
+        return res.redirect("/wallet/recharge");
+    }
+
     return res.render("wallet/usdt_manual_payment.ejs", {
-        Amount: query?.am,
+        Amount: amount,
         UsdtWalletAddress: momo.usdt_wallet_address,
     });
 }
@@ -83,7 +96,7 @@ const addManualUPIPaymentRequest = async (req, res) => {
         let auth = req.cookies.auth;
         let money = parseInt(data.money);
         let utr = parseInt(data.utr);
-        const minimumMoneyAllowed = parseInt(process.env.MINIMUM_MONEY)
+        const minimumMoneyAllowed = MINIMUM_DEPOSIT_AMOUNT
         const timeNow = new Date().toISOString();
 
         if (!money || !(money >= minimumMoneyAllowed)) {
@@ -155,11 +168,11 @@ const addManualUSDTPaymentRequest = async (req, res) => {
         let money_usdt = parseInt(data.money);
         let money = money_usdt * 82;
         let utr = parseInt(data.utr);
-        const minimumMoneyAllowed = parseInt(process.env.MINIMUM_MONEY)
+        const minimumMoneyAllowed = MINIMUM_USD_DEPOSIT_AMOUNT
 
-        if (!money || !(money >= minimumMoneyAllowed)) {
+        if (!money_usdt || !(money_usdt >= minimumMoneyAllowed)) {
             return res.status(400).json({
-                message: `Money is Required and it should be ₹${minimumMoneyAllowed} or ${(minimumMoneyAllowed / 82).toFixed(2)} or above!`,
+                message: `Money is Required and it should be $${minimumMoneyAllowed} or above!`,
                 status: false,
                 timeStamp: timeNow,
             })
@@ -315,7 +328,7 @@ const initiateUPIPayment = async (req, res) => {
     let money = parseInt(req.body.money);
     const timeNow = new Date().toISOString();
 
-    const minimumMoneyAllowed = parseInt(process.env.MINIMUM_MONEY);
+    const minimumMoneyAllowed = MINIMUM_DEPOSIT_AMOUNT;
 
     if (!money || !(money >= minimumMoneyAllowed)) {
         return res.status(400).json({
@@ -514,7 +527,7 @@ const initiateWowPayPayment = async (req, res) => {
     let auth = req.cookies.auth;
     let money = parseInt(req.query.money);
 
-    const minimumMoneyAllowed = parseInt(process.env.MINIMUM_MONEY)
+    const minimumMoneyAllowed = MINIMUM_DEPOSIT_AMOUNT
 
     if (!money || !(money >= minimumMoneyAllowed)) {
         return res.status(400).json({

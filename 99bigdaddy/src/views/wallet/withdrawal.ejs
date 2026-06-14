@@ -7641,7 +7641,7 @@
                         <div data-v-25d9c352="" class="item c-row c-row-middle">
                             <div data-v-25d9c352="" class="m-r-10 van-image" style="width: 30px; height: 30px;"><img
                                     src="/images/king (8).png" class="van-image__img"></div>
-                            <div data-v-25d9c352="">5. Withdrawal Amount Range: <br>300 - Unlimited</div>
+                            <div data-v-25d9c352="">5. Withdrawal Amount Range: <br>1000 - Unlimited</div>
                         </div>
                     </div>
                 </div>
@@ -7729,7 +7729,7 @@
             e.preventDefault();
             let money = $('input:eq(0)').val().trim();
             let password = $('input:eq(1)').val().trim();
-            if (money && password && money >= 300) {
+            if (money && password && money >= 1000) {
                 $.ajax({
                     type: "POST",
                     url: "/api/webapi/withdrawal",
@@ -7751,7 +7751,7 @@
                 alertMess('Please Enter Complete Information', $(this));
             } else {
                 $(this).addClass('block-click');
-                alertMess('Withdrawal Amount Range: <br>300 - Unlimited', $(this));
+                alertMess('Withdrawal Amount Range: <br>1000 - Unlimited', $(this));
             }
         });
     </script>

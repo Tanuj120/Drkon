@@ -1,28 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Drakon mark">
-  <defs>
-    <radialGradient id="glow" cx="50%" cy="42%" r="44%">
-      <stop offset="0%" stop-color="#ffb649"/>
-      <stop offset="55%" stop-color="#ff6b00"/>
-      <stop offset="100%" stop-color="#120500"/>
-    </radialGradient>
-    <linearGradient id="metal" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f6f7f9"/>
-      <stop offset="32%" stop-color="#c9cbd0"/>
-      <stop offset="65%" stop-color="#6c7078"/>
-      <stop offset="100%" stop-color="#2b2d33"/>
-    </linearGradient>
-  </defs>
-  <rect width="256" height="256" rx="32" fill="#000"/>
-  <circle cx="128" cy="108" r="78" fill="url(#glow)" opacity=".95"/>
-  <path d="M78 74c7-21 24-42 39-49-2 16 2 30 10 40-19 0-34 3-49 9z" fill="#1e2128" stroke="#7f848d" stroke-width="4"/>
-  <path d="M178 74c-7-21-24-42-39-49 2 16-2 30-10 40 19 0 34 3 49 9z" fill="#1e2128" stroke="#7f848d" stroke-width="4"/>
-  <path d="M50 130c9-41 42-82 78-92 36 10 69 51 78 92-5 29-19 53-41 68-13 9-33 16-37 16s-24-7-37-16c-22-15-36-39-41-68z" fill="#14171d" stroke="#585c64" stroke-width="5"/>
-  <path d="M81 108l27-23 33 14-24 21z" fill="#8d1400"/>
-  <path d="M175 108l-27-23-33 14 24 21z" fill="#8d1400"/>
-  <path d="M90 115l25 4-12 18-27 0z" fill="#ffd348"/>
-  <path d="M166 115l-25 4 12 18 27 0z" fill="#ffd348"/>
-  <path d="M99 149c14-6 23-8 29-8s15 2 29 8c-6 18-16 29-29 33-13-4-23-15-29-33z" fill="#0d0f13"/>
-  <path d="M106 160h44l-8 16-14 16-14-16z" fill="#ff7200"/>
-  <path d="M111 167h34l-5 11-12 14-12-14z" fill="#ffd04a"/>
-  <path d="M80 206h96l-11 9-37 16-37-16z" fill="url(#metal)" stroke="#1d130d" stroke-width="3"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Drakon Games icon">
+  <rect width="256" height="256" rx="44" fill="#fff"/>
+  <g fill="#080808">
+    <path d="M35 138c45-65 106-93 172-85-26-19-56-27-92-26 29-13 61-14 94-6-14-15-33-27-56-35 58 7 103 36 137 85-41-29-81-39-124-31 30 9 55 27 73 52-31-17-65-22-100-14 35 12 61 35 78 69-56-35-106-40-150-14-14 8-25 14-32 5z"/>
+    <path d="M48 139c38 20 75 24 111 11-29 35-68 52-118 52 21-12 36-28 45-49-18 4-32-1-38-14z"/>
+    <path d="M197 106l36 8-26 17-23-8z"/>
+    <path d="M219 82l55 36-26 4-25-14z"/>
+    <path d="M150 89l-20-27 41 20z"/>
+    <path d="M94 116l-33-16 45 2z"/>
+    <circle cx="187" cy="82" r="8" fill="#fff"/>
+    <path d="M210 155l33 21-47-5z"/>
+  </g>
 </svg>

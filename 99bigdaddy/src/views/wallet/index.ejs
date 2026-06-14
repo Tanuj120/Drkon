@@ -415,19 +415,19 @@
                     <div style="font-size:18px;">&#9632;</div>
                     <div class="summary-badge">Financial security</div>
                 </div>
-                <div class="summary-amount" id="fdLockedAmount">$0.00</div>
-                <div class="summary-subtitle">24-hour estimated revenue <strong id="fdDailyRevenue">$0.00</strong></div>
+                <div class="summary-amount" id="fdLockedAmount">₹0.00</div>
+                <div class="summary-subtitle">24-hour estimated revenue <strong id="fdDailyRevenue">₹0.00</strong></div>
             </div>
 
             <div class="metrics">
                 <div class="metrics-grid">
                     <div>
-                        <div class="metric-value" id="fdGeneratedRevenue">$0.00</div>
+                        <div class="metric-value" id="fdGeneratedRevenue">₹0.00</div>
                         <div class="metric-label">Generated revenue</div>
                         <div class="rate-pill" id="fdRateLabel">My interest rate 0.50</div>
                     </div>
                     <div>
-                        <div class="metric-value success" id="fdAccumulatedRevenue">$0.00</div>
+                        <div class="metric-value success" id="fdAccumulatedRevenue">₹0.00</div>
                         <div class="metric-label">Accumulated revenue</div>
                     </div>
                 </div>
@@ -446,7 +446,7 @@
                     <h2 class="section-title">Copy Gaming</h2>
                     <div class="plan-list" id="fdPlans"></div>
                     <div class="deposit-form">
-                        <input id="fdAmount" class="amount-input" type="number" min="1" step="0.01" placeholder="Enter amount to transfer in">
+                        <input id="fdAmount" class="amount-input" type="number" min="500" step="500" placeholder="Enter amount to transfer in">
                         <button class="action-button primary" id="fdCreateButton">Confirm</button>
                     </div>
                 </div>
@@ -492,7 +492,7 @@
         let latestFixedDepositSummary = null;
 
         function formatMoney(value) {
-            return '$' + Number(value || 0).toFixed(2);
+            return '₹' + Number(value || 0).toFixed(2);
         }
 
         function formatDate(value) {
@@ -518,10 +518,10 @@
             const html = getCopyGamingPlans(plans).map((plan) => `
                 <div class="plan-card ${Number(plan.days) === Number(selectedFdPlan) ? 'active' : ''}" data-days="${plan.days}">
                     <div class="plan-top">
-                        <span>${plan.days} days</span>
+                        <span>${plan.days} days stacking</span>
                         <span class="plan-rate">${Number(plan.dailyRate).toFixed(2)}% daily</span>
                     </div>
-                    <div class="plan-note">Withdraw only after ${plan.days} full days. Daily payout rate is ${Number(plan.dailyRate).toFixed(2)}%.</div>
+                    <div class="plan-note">Withdraw only after ${plan.days} full days stacking. Daily payout rate is ${Number(plan.dailyRate).toFixed(2)}%.</div>
                 </div>
             `).join('');
             $('#fdPlans').html(html);
@@ -627,6 +627,10 @@
             const amount = Number($('#fdAmount').val());
             if (!amount || amount <= 0) {
                 notify('Please enter a valid amount.');
+                return;
+            }
+            if (amount % 500 !== 0) {
+                notify('Amount must be in multiples of 500.');
                 return;
             }
 

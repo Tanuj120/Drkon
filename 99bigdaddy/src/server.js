@@ -125,7 +125,46 @@ app.use((req, res, next) => {
           );
         }
 
-        if (body.indexOf("₹") !== -1) body = body.replace(/₹/g, "$");
+        if (body.indexOf("â‚¹") !== -1) body = body.replace(/â‚¹/g, "₹");
+
+        if (body.includes("</body>") && !body.includes("data-drakon-currency-normalizer")) {
+          body = body.replace(
+            "</body>",
+            `<script data-drakon-currency-normalizer>
+(function () {
+  var keepDollarCurrency = /^\\/wallet\\/(?:recharge|withdrawal)(?:$|\\/)/.test(window.location.pathname) || /^\\/wallet\\/paynow\\/manual_usdt(?:$|\\/)/.test(window.location.pathname);
+  if (keepDollarCurrency) return;
+  var rupee = "\\u20B9";
+  var skipSelector = "script,style,textarea,input,code,pre";
+  var normalizeTextNode = function (node) {
+    if (!node || node.nodeType !== Node.TEXT_NODE || !node.nodeValue) return;
+    if (node.parentElement && node.parentElement.closest(skipSelector)) return;
+    var nextValue = node.nodeValue.replace(/\\u00e2\\u201a\\u00b9/g, rupee).replace(/\\$/g, rupee);
+    if (nextValue !== node.nodeValue) node.nodeValue = nextValue;
+  };
+  var normalizeRoot = function (root) {
+    if (!root) return;
+    if (root.nodeType === Node.TEXT_NODE) {
+      normalizeTextNode(root);
+      return;
+    }
+    if (root.nodeType !== Node.ELEMENT_NODE && root.nodeType !== Node.DOCUMENT_NODE) return;
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    var node;
+    while ((node = walker.nextNode())) normalizeTextNode(node);
+  };
+  normalizeRoot(document.body);
+  new MutationObserver(function (mutations) {
+    mutations.forEach(function (mutation) {
+      if (mutation.type === "characterData") normalizeTextNode(mutation.target);
+      mutation.addedNodes && mutation.addedNodes.forEach(normalizeRoot);
+    });
+  }).observe(document.body, { childList: true, subtree: true, characterData: true });
+})();
+</script>
+</body>`,
+          );
+        }
 
         // Replace India flag emoji with US flag emoji
         body = body.replace(/🇮🇳/g, "🇺🇸");

@@ -213,11 +213,11 @@
 
                             <!-- Money Amount Field Input -->
                             <div data-v-67caa467="" class="box numberSize c-row c-row-between c-row-middle p-l-10">
-                                <div data-v-67caa467="" id="inr_input" class="fuhao amount-currency-symbol">₹</div>
+                                <div data-v-67caa467="" id="inr_input" class="fuhao amount-currency-symbol">&#8377;</div>
                                 <div data-v-67caa467="" class="input van-cell van-field">
                                     <div class="van-cell__value van-cell__value--alone van-field__value">
                                         <div class="van-field__body">
-                                            <input type="tel" id="money_amount_input" value="300" inputmode="numeric"
+                                            <input type="tel" id="money_amount_input" value="500" inputmode="numeric"
                                                 name="amount" placeholder="Please enter the amount"
                                                 class="van-field__control">
                                         </div>
@@ -230,17 +230,17 @@
                             <!-- Quick Money Amount Options -->
                             <div id="quick_money_options" data-v-67caa467=""
                                 class="list m-t-10 c-row c-row-between c-flex-warp">
-                                <div data-v-67caa467="" data-money="300" class="li action">
-                                    <span data-v-67caa467="" class="number">100</span>
-                                </div>
-                                <div data-v-67caa467="" data-money="300" class="li action">
-                                    <span data-v-67caa467="" class="number">300</span>
-                                </div>
-                                <div data-v-67caa467="" data-money="500" class="li">
+                                <div data-v-67caa467="" data-money="500" class="li action">
                                     <span data-v-67caa467="" class="number">500</span>
                                 </div>
                                 <div data-v-67caa467="" data-money="1000" class="li">
                                     <span data-v-67caa467="" class="number">1K</span>
+                                </div>
+                                <div data-v-67caa467="" data-money="2000" class="li">
+                                    <span data-v-67caa467="" class="number">2K</span>
+                                </div>
+                                <div data-v-67caa467="" data-money="5000" class="li">
+                                    <span data-v-67caa467="" class="number">5K</span>
                                 </div>
                                 <div data-v-67caa467="" data-money="10000" class="li">
                                     <span data-v-67caa467="" class="number">10K</span>
@@ -334,17 +334,17 @@
         }
 
         const QuickMoneyForRegular = `
-            <div data-v-67caa467="" data-money="100" class="li action">
-                <span data-v-67caa467="" class="number">100</span>
-            </div>
-            <div data-v-67caa467="" data-money="300" class="li">
-                <span data-v-67caa467="" class="number">300</span>
-            </div>
-            <div data-v-67caa467="" data-money="500" class="li">
+            <div data-v-67caa467="" data-money="500" class="li action">
                 <span data-v-67caa467="" class="number">500</span>
             </div>
             <div data-v-67caa467="" data-money="1000" class="li">
                 <span data-v-67caa467="" class="number">1K</span>
+            </div>
+            <div data-v-67caa467="" data-money="2000" class="li">
+                <span data-v-67caa467="" class="number">2K</span>
+            </div>
+            <div data-v-67caa467="" data-money="5000" class="li">
+                <span data-v-67caa467="" class="number">5K</span>
             </div>
             <div data-v-67caa467="" data-money="10000" class="li">
                 <span data-v-67caa467="" class="number">10K</span>
@@ -381,8 +381,10 @@
         let selectedPaymentMethod = ''
         let inputMoney = 0
         let selectedCurrency = CurrencyMap.INR
+        const MINIMUM_INR_AMOUNT = 500
+        const MINIMUM_USD_AMOUNT = 5
 
-        const getDefaultAmount = () => selectedCurrency === CurrencyMap.USD ? '5' : '100'
+        const getDefaultAmount = () => selectedCurrency === CurrencyMap.USD ? '5' : '500'
 
         const getQuickMoneyOptions = () => selectedCurrency === CurrencyMap.USD ? QuickMoneyForUSD : QuickMoneyForRegular
 
@@ -521,12 +523,10 @@
         }
 
         const handleDepositFund = (event) => {
-            const minimumMoneyAllowed = parseInt(`<%=MinimumMoney%>`)
-            const payableMoneyAmount = getPayableMoneyAmount(inputMoney)
-            const minimumDollarAllowed = Math.ceil(minimumMoneyAllowed / USD_TO_INR_RATE)
+            const minimumMoneyAllowed = selectedCurrency === CurrencyMap.USD ? MINIMUM_USD_AMOUNT : MINIMUM_INR_AMOUNT
 
-            if (!inputMoney || !(payableMoneyAmount >= minimumMoneyAllowed)) {
-                const minimumText = selectedCurrency === CurrencyMap.USD ? `$${minimumDollarAllowed}` : `₹${minimumMoneyAllowed}`
+            if (!inputMoney || !(inputMoney >= minimumMoneyAllowed)) {
+                const minimumText = selectedCurrency === CurrencyMap.USD ? `$${minimumMoneyAllowed}` : `INR ${minimumMoneyAllowed}`
                 alertMessage(`Money is required and it should be ${minimumText} or above!`)
                 return
             }

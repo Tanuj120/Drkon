@@ -53,18 +53,35 @@
 </script>
 <script>
     // Runtime frontend adjustments requested by client:
-    // 1) Replace rupee symbol with dollar sign in text nodes
+    // 1) Keep visible currency as rupees outside deposit and withdraw pages
     // 2) Change language label 'IND' to 'US' and show US flag emoji
     // 3) Set default phone country code to +1 where applicable
     // 4) Remove any signup popup element if present
     document.addEventListener('DOMContentLoaded', function () {
-        // Replace rupee signs in text nodes
+        const keepDollarCurrency = /^\/wallet\/(?:recharge|withdrawal)(?:$|\/)/.test(window.location.pathname) || /^\/wallet\/paynow\/manual_usdt(?:$|\/)/.test(window.location.pathname);
+        const skipCurrencyNormalizeSelector = 'script,style,textarea,input,code,pre';
+
+        // Normalize visible currency text outside deposit and withdraw pages
+        const normalizeCurrencyText = (value) => {
+            if (!value || keepDollarCurrency) return value;
+            return value.replace(/â‚¹/g, '₹').replace(/\$/g, '₹');
+        };
+
+        const shouldNormalizeCurrencyNode = (node) => {
+            return node &&
+                node.nodeType === Node.TEXT_NODE &&
+                node.parentElement &&
+                !node.parentElement.closest(skipCurrencyNormalizeSelector);
+        };
+
         try {
             const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
             let node;
             while (node = walker.nextNode()) {
-                if (node.nodeValue && node.nodeValue.indexOf('₹') !== -1) {
-                    node.nodeValue = node.nodeValue.replace(/₹/g, '$');
+                if (!shouldNormalizeCurrencyNode(node)) continue;
+                const normalizedValue = normalizeCurrencyText(node.nodeValue);
+                if (normalizedValue !== node.nodeValue) {
+                    node.nodeValue = normalizedValue;
                 }
             }
         } catch (e) { /* ignore */ }
@@ -96,15 +113,17 @@
         // Also hide any van-popup elements
         document.querySelectorAll('.van-popup, .van-popup2, .popups').forEach(n => n.style.display = 'none');
 
-        // Observe DOM changes and replace any future rupee signs
-        const replaceRupeeInNode = (node) => {
+        // Observe DOM changes and normalize any future visible currency signs
+        const normalizeCurrencyInNode = (node) => {
             if (!node) return;
             if (node.nodeType === Node.TEXT_NODE) {
-                if (node.nodeValue && node.nodeValue.indexOf('₹') !== -1) node.nodeValue = node.nodeValue.replace(/₹/g, '$');
+                if (!shouldNormalizeCurrencyNode(node)) return;
+                const normalizedValue = normalizeCurrencyText(node.nodeValue);
+                if (normalizedValue !== node.nodeValue) node.nodeValue = normalizedValue;
             } else if (node.nodeType === Node.ELEMENT_NODE) {
                 node.querySelectorAll('*').forEach(el => {
                     if (el.childNodes && el.childNodes.length) {
-                        el.childNodes.forEach(ch => { if (ch.nodeType === Node.TEXT_NODE && ch.nodeValue && ch.nodeValue.indexOf('₹') !== -1) ch.nodeValue = ch.nodeValue.replace(/₹/g, '$'); });
+                        el.childNodes.forEach(ch => normalizeCurrencyInNode(ch));
                     }
                 });
             }
@@ -113,9 +132,9 @@
         const mo = new MutationObserver((mutations) => {
             mutations.forEach(m => {
                 if (m.addedNodes && m.addedNodes.length) {
-                    m.addedNodes.forEach(n => replaceRupeeInNode(n));
+                    m.addedNodes.forEach(n => normalizeCurrencyInNode(n));
                 }
-                if (m.type === 'characterData' && m.target) replaceRupeeInNode(m.target);
+                if (m.type === 'characterData' && m.target) normalizeCurrencyInNode(m.target);
             });
         });
         mo.observe(document.body, { childList: true, subtree: true, characterData: true });
