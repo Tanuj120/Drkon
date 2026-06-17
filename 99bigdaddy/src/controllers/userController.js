@@ -14,11 +14,35 @@ const FIXED_DEPOSIT_PLANS = [
 const COPY_GAMING_AMOUNT_STEP = 500;
 const MINIMUM_DEPOSIT_AMOUNT = 500;
 const MINIMUM_WITHDRAW_AMOUNT = 1000;
+const DAY_IN_MS = 86400000;
 
 const formatMoney = (value) => Number(Number(value || 0).toFixed(2));
 
 const getFixedDepositPlan = (days) => {
     return FIXED_DEPOSIT_PLANS.find((plan) => Number(plan.days) === Number(days));
+}
+
+const calculateCopyGamingValues = (source = {}) => {
+    const amount = formatMoney(source.amount);
+    const storedTenureDays = Number(source.tenure_days ?? source.tenureDays ?? source.days ?? 0);
+    const plan = getFixedDepositPlan(storedTenureDays);
+    const tenureDays = Number(plan?.days || storedTenureDays || 0);
+    const dailyRate = formatMoney(plan?.dailyRate ?? source.daily_rate ?? source.dailyRate ?? 0);
+    const startTime = Number(source.start_time ?? source.startTime ?? source.created_at ?? source.createdAt ?? 0);
+    const storedMaturityTime = Number(source.maturity_time ?? source.maturityTime ?? 0);
+    const maturityTime = startTime && tenureDays ? startTime + (tenureDays * DAY_IN_MS) : storedMaturityTime;
+    const totalInterest = formatMoney((amount * dailyRate * tenureDays) / 100);
+    const maturityAmount = formatMoney(amount + totalInterest);
+
+    return {
+        amount,
+        tenureDays,
+        dailyRate,
+        totalInterest,
+        maturityAmount,
+        startTime,
+        maturityTime,
+    };
 }
 
 const ensureFixedDepositsTable = async () => {
@@ -70,21 +94,24 @@ const buildFixedDepositSummary = (rows = []) => {
     let withdrawableAmount = 0;
 
     rows.forEach((row) => {
-        const amount = formatMoney(row.amount);
-        const totalInterest = formatMoney(row.total_interest);
-        const maturityAmount = formatMoney(row.maturity_amount);
-        const tenureDays = Number(row.tenure_days || 0);
-        const startTime = Number(row.start_time || 0);
-        const maturityTime = Number(row.maturity_time || 0);
-        const elapsedDays = Math.max(0, Math.floor((Math.min(now, maturityTime) - startTime) / 86400000));
-        const earnedInterest = formatMoney((amount * Number(row.daily_rate || 0) * Math.min(elapsedDays, tenureDays)) / 100);
+        const {
+            amount,
+            tenureDays,
+            dailyRate,
+            totalInterest,
+            maturityAmount,
+            startTime,
+            maturityTime,
+        } = calculateCopyGamingValues(row);
+        const elapsedDays = Math.max(0, Math.floor((Math.min(now, maturityTime) - startTime) / DAY_IN_MS));
+        const earnedInterest = formatMoney((amount * dailyRate * Math.min(elapsedDays, tenureDays)) / 100);
         const status = row.status === 'withdrawn' ? 'withdrawn' : (maturityTime <= now ? 'matured' : 'active');
 
         const normalized = {
             id: row.id,
             amount,
             tenureDays,
-            dailyRate: formatMoney(row.daily_rate),
+            dailyRate,
             totalInterest,
             maturityAmount,
             startTime,
@@ -321,15 +348,38 @@ const createFixedDeposit = async (req, res) => {
         await ensureFixedDepositsTable();
 
         const now = Date.now();
-        const maturityTime = now + (plan.days * 86400000);
-        const totalInterest = formatMoney((amount * plan.dailyRate * plan.days) / 100);
-        const maturityAmount = formatMoney(amount + totalInterest);
+        const {
+            totalInterest,
+            maturityAmount,
+            maturityTime,
+        } = calculateCopyGamingValues({
+            amount,
+            tenure_days: plan.days,
+            daily_rate: plan.dailyRate,
+            start_time: now,
+        });
 
-        await connection.execute('UPDATE users SET money = money - ? WHERE token = ?', [amount, auth]);
-        await connection.execute(
-            'INSERT INTO fixed_deposits (phone, amount, tenure_days, daily_rate, total_interest, maturity_amount, status, start_time, maturity_time, withdrawn_time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [user.phone, amount, plan.days, plan.dailyRate, totalInterest, maturityAmount, 'active', now, maturityTime, 0, now]
+        const [deductResult] = await connection.execute(
+            'UPDATE users SET money = money - ? WHERE token = ? AND money >= ?',
+            [amount, auth, amount]
         );
+        if (!deductResult.affectedRows) {
+            return res.status(200).json({
+                message: 'Insufficient wallet balance',
+                status: false,
+                timeStamp: timeNow,
+            });
+        }
+
+        try {
+            await connection.execute(
+                'INSERT INTO fixed_deposits (phone, amount, tenure_days, daily_rate, total_interest, maturity_amount, status, start_time, maturity_time, withdrawn_time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [user.phone, amount, plan.days, plan.dailyRate, totalInterest, maturityAmount, 'active', now, maturityTime, 0, now]
+            );
+        } catch (insertError) {
+            await connection.execute('UPDATE users SET money = money + ? WHERE token = ?', [amount, auth]);
+            throw insertError;
+        }
 
         return res.status(200).json({
             message: `Copy Gaming created for ${plan.days} days`,
@@ -387,7 +437,13 @@ const withdrawFixedDeposit = async (req, res) => {
             });
         }
 
-        if (Number(fd.maturity_time || 0) > Date.now()) {
+        const {
+            maturityTime,
+            maturityAmount,
+            totalInterest,
+        } = calculateCopyGamingValues(fd);
+
+        if (maturityTime > Date.now()) {
             return res.status(200).json({
                 message: 'You can withdraw this Copy Gaming only after maturity',
                 status: false,
@@ -395,14 +451,30 @@ const withdrawFixedDeposit = async (req, res) => {
             });
         }
 
-        const payoutAmount = formatMoney(fd.maturity_amount);
+        const payoutAmount = formatMoney(maturityAmount);
         const now = Date.now();
 
-        await connection.execute('UPDATE users SET money = money + ? WHERE token = ?', [payoutAmount, auth]);
-        await connection.execute(
-            'UPDATE fixed_deposits SET status = ?, withdrawn_time = ? WHERE id = ?',
-            ['withdrawn', now, depositId]
+        const [withdrawResult] = await connection.execute(
+            'UPDATE fixed_deposits SET status = ?, withdrawn_time = ?, total_interest = ?, maturity_amount = ?, maturity_time = ? WHERE id = ? AND phone = ? AND status != ?',
+            ['withdrawn', now, totalInterest, payoutAmount, maturityTime, depositId, user.phone, 'withdrawn']
         );
+        if (!withdrawResult.affectedRows) {
+            return res.status(200).json({
+                message: 'Copy Gaming already withdrawn',
+                status: false,
+                timeStamp: timeNow,
+            });
+        }
+
+        try {
+            await connection.execute('UPDATE users SET money = money + ? WHERE token = ?', [payoutAmount, auth]);
+        } catch (creditError) {
+            await connection.execute(
+                'UPDATE fixed_deposits SET status = ?, withdrawn_time = ? WHERE id = ? AND phone = ?',
+                ['active', 0, depositId, user.phone]
+            );
+            throw creditError;
+        }
 
         return res.status(200).json({
             message: 'Copy Gaming withdrawn successfully',

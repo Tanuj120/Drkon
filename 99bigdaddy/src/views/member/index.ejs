@@ -353,6 +353,30 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="/js/client.js"></script>
     <script>
+        function formatAccountBalance(amount) {
+            return `₹ ${Number(amount || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        }
+
+        function setAccountBalance(amount) {
+            $('#Balance').text(formatAccountBalance(amount));
+            $('#balance_show').text('*****');
+        }
+
+        function refreshAccountBalance() {
+            return fetch('/api/webapi/GetUserInfo')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === false) return false;
+                    setAccountBalance(data.data.money_user);
+                    return true;
+                });
+        }
+
+        setAccountBalance(0);
+
         fetch('/api/webapi/GetUserInfo')
             .then(response => response.json())
             .then(data => {
@@ -364,6 +388,8 @@
                 $('.infoName .id').text(`UID:${data.data.id_user}`);
                 $('.infoName .id').attr('data-clipboard-text', '');
                 $('.infoName .number').text(`Mobile Number: +91 ${data.data.phone_user.slice(0, 2)}****${data.data.phone_user.slice(-4)}`);
+                setAccountBalance(data.data.money_user);
+                setTimeout(() => setAccountBalance(data.data.money_user), 0);
                 $('.money .txt').text(` ₹ ${data.data.money_user} `);
             });
     </script>
@@ -371,9 +397,15 @@
         $('.reload_money').click(function (e) {
             e.preventDefault();
             $(this).addClass('action block-click');
+            refreshAccountBalance();
             setTimeout(() => {
                 $(this).removeClass('action block-click');
             }, 3000);
+        });
+
+        window.addEventListener('focus', refreshAccountBalance);
+        document.addEventListener('visibilitychange', function () {
+            if (!document.hidden) refreshAccountBalance();
         });
 
         window.onload = function () {

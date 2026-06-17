@@ -518,10 +518,10 @@
             const html = getCopyGamingPlans(plans).map((plan) => `
                 <div class="plan-card ${Number(plan.days) === Number(selectedFdPlan) ? 'active' : ''}" data-days="${plan.days}">
                     <div class="plan-top">
-                        <span>${plan.days} days stacking</span>
+                        <span>${plan.days} days Staking</span>
                         <span class="plan-rate">${Number(plan.dailyRate).toFixed(2)}% daily</span>
                     </div>
-                    <div class="plan-note">Withdraw only after ${plan.days} full days stacking. Daily payout rate is ${Number(plan.dailyRate).toFixed(2)}%.</div>
+                    <div class="plan-note">Withdraw only after ${plan.days} full days Staking. Daily payout rate is ${Number(plan.dailyRate).toFixed(2)}%.</div>
                 </div>
             `).join('');
             $('#fdPlans').html(html);
