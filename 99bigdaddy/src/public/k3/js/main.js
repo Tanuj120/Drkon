@@ -939,7 +939,7 @@ function sendGame1() {
     let listJoin = join.slice(0, -1);
     let xvalue = $('.info-bet').attr("xvalue");
     let money = $('.info-bet').attr("money");
-    $.ajax({
+    return $.ajax({
         type: "POST",
         url: "/api/webapi/action/k3/join",
         data: {
@@ -982,7 +982,7 @@ function sendGame2() {
 
     let xvalue = $('.info-bet').attr("xvalue");
     let money = $('.info-bet').attr("money");
-    $.ajax({
+    return $.ajax({
         type: "POST",
         url: "/api/webapi/action/k3/join",
         data: {
@@ -1021,7 +1021,7 @@ function sendGame3() {
     listJoin = listJoin + '@' + threeNum;
     let xvalue = $('.info-bet').attr("xvalue");
     let money = $('.info-bet').attr("money");
-    $.ajax({
+    return $.ajax({
         type: "POST",
         url: "/api/webapi/action/k3/join",
         data: {
@@ -1069,7 +1069,7 @@ function sendGame4() {
     let listJoin = join.slice(0, -1) + '@' + join2 + '@' + join3.slice(0, -1);
     let xvalue = $('.info-bet').attr("xvalue");
     let money = $('.info-bet').attr("money");
-    $.ajax({
+    return $.ajax({
         type: "POST",
         url: "/api/webapi/action/k3/join",
         data: {
@@ -1094,17 +1094,27 @@ function sendGame4() {
 
 $('.confirm').click(async function (e) {
     e.preventDefault();
-    $(this).addClass('block-click');
+    const $button = $(this);
+    if ($button.hasClass('block-click')) return;
+    $button.addClass('block-click');
     let game = $('.bet-tab .action').attr('game');
 
-    if (game == 1) {
-        await sendGame1();
-    } else if (game == 2) {
-        await sendGame2();
-    } else if (game == 3) {
-        await sendGame3();
-    } else if (game == 4) {
-        await sendGame4();
+    try {
+        if (game == 1) {
+            await sendGame1();
+        } else if (game == 2) {
+            await sendGame2();
+        } else if (game == 3) {
+            await sendGame3();
+        } else if (game == 4) {
+            await sendGame4();
+        }
+        await callAjaxMeJoin();
+    } catch (error) {
+        console.error('K3 bet request failed:', error);
+        alertMess('Network error, please try again.');
+    } finally {
+        $('.Loading').fadeOut(0);
+        $button.removeClass('block-click');
     }
-    callAjaxMeJoin();
 });

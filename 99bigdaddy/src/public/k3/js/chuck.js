@@ -175,7 +175,7 @@ function callListOrder() {
 callListOrder();
 
 function callAjaxMeJoin() {
-    $.ajax({
+    return $.ajax({
         type: "POST",
         url: "/api/webapi/k3/GetMyEmerdList",
         data: {

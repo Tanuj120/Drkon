@@ -718,11 +718,19 @@ $(".foot .right").click(function (e) {
     },
     dataType: "json",
     success: function (response) {
-      alertMessJoin(response.message);
+      alertMessJoin(response.message || 'Bet request completed');
       if (response.status === false) return;
-      $("#history-order").prepend(response.data);
-      $(".total-box .num span").text("₹ " + response.money);
+      if (response.data) $("#history-order").prepend(response.data);
+      $(".total-box .num span").text("? " + response.money);
+      if (typeof callAjaxMeJoin === 'function') callAjaxMeJoin();
       socket.emit('data-server_2', { money: x * money, join, time: Date.now(), change: response.change });
+    },
+    error: function (xhr) {
+      const message = xhr?.responseJSON?.message || 'Network error, please try again.';
+      alertMessJoin(message);
+    },
+    complete: function () {
+      $(".foot .right").removeClass("block-click");
     },
   });
 

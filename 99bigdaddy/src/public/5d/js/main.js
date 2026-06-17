@@ -531,16 +531,23 @@ $('.foot .right').click(function (e) {
         success: function (response) {
             $('.Loading').fadeOut(0);
             let chane = response.change;
-            socket.emit('data-server-5', { chane, join, list_join, money: value, x, game });
-            alertMess(response.message);
-            setTimeout(() => {
-                downAndHidden();
-                $('.foot .right').removeClass('block-click');
-            }, 500);
+            alertMess(response.message || 'Bet request completed');
             if (response.status == true) {
                 $('#money_show').text("₹ " + response.money + '.00');
                 showMeJoin();
+                socket.emit('data-server-5', { chane, join, list_join, money: value, x, game });
             }
+        },
+        error: function (xhr) {
+            const message = xhr?.responseJSON?.message || 'Network error, please try again.';
+            alertMess(message);
+        },
+        complete: function () {
+            $('.Loading').fadeOut(0);
+            setTimeout(() => {
+                downAndHidden();
+                $('.foot .right').removeClass('block-click');
+            }, 300);
         }
     });
 });
@@ -714,7 +721,7 @@ function GetMyEmerdList(datas) {
 }
 
 function callAjaxMeJoin() {
-    $.ajax({
+    return $.ajax({
         type: "POST",
         url: "/api/webapi/5d/GetMyEmerdList",
         data: {

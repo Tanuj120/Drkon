@@ -263,11 +263,18 @@ const betWinGo = async (req, res) => {
 
     let userInfo = user[0];
     let period = winGoNow[0].period;
-    let fee = (x * money) * 0.02;
-    let total = (x * money) - fee;
+    let cost = Number(x) * Number(money);
+    let fee = cost * 0.02;
+    let total = cost - fee;
+    if (!Number.isFinite(cost) || cost <= 0) {
+        return res.status(200).json({
+            message: 'Invalid bet amount',
+            status: false
+        });
+    }
     // console.log(total); 
     let timeNow = Date.now();
-    let check = userInfo.money - total;
+    let check = userInfo.money - cost;
 
     let date = new Date();
     let years = formateT(date.getFullYear());
@@ -379,10 +386,21 @@ const betWinGo = async (req, res) => {
         time = ?`;
         await connection.execute(sql, [id_product, userInfo.phone, userInfo.code, userInfo.invite, period, userInfo.level, total, x, fee, 0, gameJoin, join, 0, checkTime, timeNow]);
         console.log("Bet Money and Fee: ", total, fee);
-        await connection.execute('UPDATE `users` SET `money` = `money` - ? WHERE `token` = ? ', [money * x, auth]);
-        console.log("Updating money*x in users table: ", money * x);
+        const [deductResult] = await connection.execute('UPDATE `users` SET `money` = `money` - ? WHERE `token` = ? AND `veri` = 1 AND `money` >= ? ', [cost, auth, cost]);
+        if (!deductResult.affectedRows) {
+            await connection.execute('DELETE FROM minutes_1 WHERE id_product = ? AND phone = ?', [id_product, userInfo.phone]);
+            return res.status(200).json({
+                message: 'The amount is not enough',
+                status: false
+            });
+        }
+        console.log("Updating money*x in users table: ", cost);
         const [users] = await connection.query('SELECT `money`, `level` FROM users WHERE token = ? AND veri = 1  LIMIT 1 ', [auth]);
-        await rosesPlus(auth, money * x);
+        try {
+            await rosesPlus(auth, cost);
+        } catch (bonusError) {
+            console.error('Wingo bonus processing failed:', bonusError);
+        }
         // const [level] = await connection.query('SELECT * FROM level ');
         // let level0 = level[0];
         // const sql2 = `INSERT INTO roses SET 

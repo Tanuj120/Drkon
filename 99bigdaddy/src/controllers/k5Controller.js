@@ -187,23 +187,43 @@ const betK5D = async (req, res) => {
         let fee = total * 0.02;
         let price = total - fee;
 
+        if (!Number.isFinite(total) || total <= 0) {
+            return res.status(200).json({
+                message: 'Invalid bet amount',
+                status: false
+            });
+        }
+
         let check = userInfo.money - total;
         if (check >= 0) {
             let timeNow = Date.now();
             const sql = `INSERT INTO result_5d SET id_product = ?,phone = ?,code = ?,invite = ?,stage = ?,level = ?,money = ?,price = ?,amount = ?,fee = ?,game = ?,join_bet = ?,bet = ?,status = ?,time = ?`;
             await connection.execute(sql, [id_product, userInfo.phone, userInfo.code, userInfo.invite, period.period, userInfo.level, total, price, x, fee, game, join, list_join, 0, timeNow]);
-            await connection.execute('UPDATE `users` SET `money` = `money` - ? WHERE `token` = ? ', [total, auth]);
+            const [deductResult] = await connection.execute('UPDATE `users` SET `money` = `money` - ? WHERE `token` = ? AND `veri` = 1 AND `money` >= ? ', [total, auth, total]);
+            if (!deductResult.affectedRows) {
+                await connection.execute('DELETE FROM result_5d WHERE id_product = ? AND phone = ?', [id_product, userInfo.phone]);
+                return res.status(200).json({
+                    message: 'The amount is not enough',
+                    status: false
+                });
+            }
             const [users] = await connection.query('SELECT `money`, `level` FROM users WHERE token = ? AND veri = 1  LIMIT 1 ', [auth]);
-            await rosesPlus(auth, money * x);
-            const [level] = await connection.query('SELECT * FROM level ');
-            let level0 = level[0];
-            const sql2 = `INSERT INTO roses SET phone = ?,code = ?,invite = ?,f1 = ?,f2 = ?,f3 = ?,f4 = ?,time = ?`;
-            let total_m = total;
-            let f1 = (total_m / 100) * level0.f1;
-            let f2 = (total_m / 100) * level0.f2;
-            let f3 = (total_m / 100) * level0.f3;
-            let f4 = (total_m / 100) * level0.f4;
-            await connection.execute(sql2, [userInfo.phone, userInfo.code, userInfo.invite, f1, f2, f3, f4, timeNow]);
+            try {
+                await rosesPlus(auth, money * x);
+                const [level] = await connection.query('SELECT * FROM level ');
+                let level0 = level[0];
+                if (level0) {
+                    const sql2 = `INSERT INTO roses SET phone = ?,code = ?,invite = ?,f1 = ?,f2 = ?,f3 = ?,f4 = ?,time = ?`;
+                    let total_m = total;
+                    let f1 = (total_m / 100) * level0.f1;
+                    let f2 = (total_m / 100) * level0.f2;
+                    let f3 = (total_m / 100) * level0.f3;
+                    let f4 = (total_m / 100) * level0.f4;
+                    await connection.execute(sql2, [userInfo.phone, userInfo.code, userInfo.invite, f1, f2, f3, f4, timeNow]);
+                }
+            } catch (bonusError) {
+                console.error('5D bonus processing failed:', bonusError);
+            }
             return res.status(200).json({
                 message: 'Successful bet',
                 status: true,
@@ -219,6 +239,10 @@ const betK5D = async (req, res) => {
         }
     } catch (error) {
         if (error) console.log(error);
+        return res.status(500).json({
+            message: 'Something went wrong while placing the bet',
+            status: false
+        });
     }
 }
 
@@ -296,6 +320,17 @@ const GetMyEmerdList = async (req, res) => {
     await ensure5DRound(game);
 
     const [user] = await connection.query('SELECT `phone`, `code`, `invite`, `level`, `money` FROM users WHERE token = ? AND veri = 1 LIMIT 1 ', [auth]);
+    if (!user[0]) {
+        return res.status(200).json({
+            code: 0,
+            msg: "No more data",
+            data: {
+                gameslist: [],
+            },
+            page: 1,
+            status: false
+        });
+    }
     const [result_5d] = await connection.query(`SELECT * FROM result_5d WHERE phone = ? AND game = '${game}' ORDER BY id DESC LIMIT ${Number(pageno) + ',' + Number(pageto)}`, [user[0].phone]);
     const [result_5dAll] = await connection.query(`SELECT * FROM result_5d WHERE phone = ? AND game = '${game}' ORDER BY id DESC `, [user[0].phone]);
 
