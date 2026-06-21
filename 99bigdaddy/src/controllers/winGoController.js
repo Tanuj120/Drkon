@@ -1,4 +1,5 @@
 import connection from "../config/connectDB.js";
+import ensureGameSchema from "../utils/ensureGameSchema.js";
 // import jwt from 'jsonwebtoken'
 // import md5 from "md5";
 // import e from "express";
@@ -235,6 +236,8 @@ const rosesPlus = async (auth, money) => {
 
 
 const betWinGo = async (req, res) => {
+    try {
+    await ensureGameSchema();
     let { typeid, join, x, money } = req.body;
     let auth = req.cookies.auth;
 
@@ -429,6 +432,13 @@ const betWinGo = async (req, res) => {
     } else {
         return res.status(200).json({
             message: 'The amount is not enough',
+            status: false
+        });
+    }
+    } catch (error) {
+        console.error('Wingo bet failed:', error);
+        return res.status(200).json({
+            message: 'Unable to place bet, please try again.',
             status: false
         });
     }

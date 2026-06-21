@@ -1119,7 +1119,8 @@ $('.confirm').click(async function (e) {
         await callAjaxMeJoin();
     } catch (error) {
         console.error('K3 bet request failed:', error);
-        alertMess('Network error, please try again.');
+        const message = error?.responseJSON?.message || 'Network error, please try again.';
+        alertMess(message);
     } finally {
         $('.Loading').fadeOut(0);
         $button.removeClass('block-click');

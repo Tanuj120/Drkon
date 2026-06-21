@@ -1,4 +1,5 @@
 import connection from "../config/connectDB.js";
+import ensureGameSchema from "../utils/ensureGameSchema.js";
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -138,6 +139,7 @@ const validateBet = async (join, list_join, x, money, game) => {
 
 const betK3 = async (req, res) => {
     try {
+        await ensureGameSchema();
         let { listJoin, game, gameJoin, xvalue, money } = req.body;
         let auth = req.cookies.auth;
 
@@ -169,11 +171,15 @@ const betK3 = async (req, res) => {
         let id_product = years + months + days + Math.floor(Math.random() * 1000000000000000);
 
         let total = 0;
+        const safeListJoin = String(listJoin || '');
+        const betMoney = Number(money);
+        const betMultiplier = Number(xvalue);
         if (gameJoin == 1) {
-            total = money * xvalue * (String(listJoin).split(',').length);
+            total = betMoney * betMultiplier * (safeListJoin ? safeListJoin.split(',').length : 0);
         } else if (gameJoin == 2) {
-            let twoSame = listJoin.split('@')[0]; // Chọn 2 số phù hợp
-            let motDuyNhat = listJoin.split('@')[1]; // Chọn một cặp số duy nhất
+            const parts = safeListJoin.split('@');
+            let twoSame = parts[0] || ''; // Chọn 2 số phù hợp
+            let motDuyNhat = parts[1] || ''; // Chọn một cặp số duy nhất
             if (twoSame.length > 0) {
                 twoSame = twoSame.split(',').length;
             }
@@ -183,24 +189,26 @@ const betK3 = async (req, res) => {
                 let arr = motDuyNhat.split('&');
                 for (let i = 0; i < arr.length; i++) {
                     motDuyNhat = arr[i].split('|');
-                    count = motDuyNhat[1].split(',').length;
+                    count = motDuyNhat[1] ? motDuyNhat[1].split(',').length : 0;
                 }
                 lengthArr = arr.length;
                 count = count;
             }
-            total = money * xvalue * (lengthArr * count) + (twoSame * money * xvalue);
+            total = betMoney * betMultiplier * (lengthArr * count) + (twoSame * betMoney * betMultiplier);
         } else if (gameJoin == 3) {
-            let baDuyNhat = listJoin.split('@')[0]; // Chọn 3 số duy nhất
+            const parts = safeListJoin.split('@');
+            let baDuyNhat = parts[0] || ''; // Chọn 3 số duy nhất
             let countBaDuyNhat = 0;
             if (baDuyNhat.length > 0) {
                 countBaDuyNhat = baDuyNhat.split(',').length;
             }
-            let threeSame = listJoin.split('@')[1].length; // Chọn 3 số giống nhau
-            total = money * xvalue * countBaDuyNhat + (threeSame * money * xvalue);
+            let threeSame = (parts[1] || '').length; // Chọn 3 số giống nhau
+            total = betMoney * betMultiplier * countBaDuyNhat + (threeSame * betMoney * betMultiplier);
         } else if (gameJoin == 4) {
-            let threeNumberUnlike = listJoin.split('@')[0]; // Chọn 3 số duy nhất
-            let twoLienTiep = listJoin.split('@')[1]; // Chọn 3 số liên tiếp
-            let twoNumberUnlike = listJoin.split('@')[2]; // Chọn 3 số duy nhất
+            const parts = safeListJoin.split('@');
+            let threeNumberUnlike = parts[0] || ''; // Chọn 3 số duy nhất
+            let twoLienTiep = parts[1] || ''; // Chọn 3 số liên tiếp
+            let twoNumberUnlike = parts[2] || ''; // Chọn 3 số duy nhất
 
             let threeUn = 0;
             if (threeNumberUnlike.length > 0) {
