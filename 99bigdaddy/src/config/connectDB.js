@@ -153,6 +153,7 @@ const createMockConnection = () => {
   const recharges = [];
   const withdraws = [];
   const fixedDeposits = [];
+  const referralLevelIncome = [];
 
   const selectUsers = (sql, params = []) => {
     let rows = users;
@@ -161,19 +162,23 @@ const createMockConnection = () => {
       rows = users.filter(
         (user) => phoneMatches(user.phone, phone) && user.password === password,
       );
-    } else if (/where\s+token\s*=\s*\?\s+and\s+password\s*=\s*\?/i.test(sql)) {
+    } else if (/where\s+`?token`?\s*=\s*\?\s+and\s+`?password`?\s*=\s*\?/i.test(sql)) {
       const [token, password] = params;
       rows = users.filter((user) => user.token === token && user.password === password);
-    } else if (/where\s+phone\s*=\s*\?/i.test(sql)) {
+    } else if (/where\s+`?phone`?\s*=\s*\?/i.test(sql)) {
       const [phone] = params;
       rows = users.filter((user) => phoneMatches(user.phone, phone));
-    } else if (/where\s+token\s*=\s*\?/i.test(sql)) {
+    } else if (/where\s+phone\s+like\s*\?/i.test(sql)) {
+      const [phonePattern] = params;
+      const prefix = String(phonePattern || "").replace(/%$/, "");
+      rows = users.filter((user) => String(user.phone || "").startsWith(prefix));
+    } else if (/where\s+`?token`?\s*=\s*\?/i.test(sql)) {
       const [token] = params;
       rows = users.filter((user) => user.token === token);
-    } else if (/where\s+code\s*=\s*\?/i.test(sql)) {
+    } else if (/where\s+`?code`?\s*=\s*\?/i.test(sql)) {
       const [code] = params;
       rows = users.filter((user) => user.code === code);
-    } else if (/where\s+invite\s*=\s*\?/i.test(sql)) {
+    } else if (/where\s+`?invite`?\s*=\s*\?/i.test(sql)) {
       const [invite] = params;
       rows = users.filter((user) => user.invite === invite);
     } else if (/where\s+ip_address\s*=\s*\?/i.test(sql)) {
@@ -251,6 +256,17 @@ const createMockConnection = () => {
       if (user) user.money = Number(user.money || 0) + Number(amount || 0);
       return [{ affectedRows: user ? 1 : 0 }, []];
     }
+    if (/set\s+money\s*=\s*money\s*\+\s*\?,\s*roses_f\s*=\s*roses_f\s*\+\s*\?/i.test(sql)) {
+      const [amount, rosesF, rosesF1, rosesToday, phone] = params;
+      const user = users.find((entry) => phoneMatches(entry.phone, phone) && Number(entry.status) === 1 && Number(entry.veri) === 1);
+      if (user) {
+        user.money = Number(user.money || 0) + Number(amount || 0);
+        user.roses_f = Number(user.roses_f || 0) + Number(rosesF || 0);
+        user.roses_f1 = Number(user.roses_f1 || 0) + Number(rosesF1 || 0);
+        user.roses_today = Number(user.roses_today || 0) + Number(rosesToday || 0);
+      }
+      return [{ affectedRows: user ? 1 : 0 }, []];
+    }
     if (/update\s+users\s+set\s+name_user\s*=\s*\?,\s*password\s*=\s*\?/i.test(sql)) {
       const username = params[params.length - 1];
       const user = users.find((entry) => phoneMatches(entry.phone, username));
@@ -292,6 +308,15 @@ const createMockConnection = () => {
   };
 
   const updateFixedDeposits = (sql, params = []) => {
+    if (/set\s+referral_transaction_id\s*=\s*\?,\s*referral_processed\s*=\s*\?/i.test(sql)) {
+      const [referralTransactionId, referralProcessed, id, phone] = params;
+      const row = fixedDeposits.find((entry) => Number(entry.id) === Number(id) && phoneMatches(entry.phone, phone));
+      if (row) {
+        row.referral_transaction_id = referralTransactionId;
+        row.referral_processed = referralProcessed;
+      }
+      return [{ affectedRows: row ? 1 : 0 }, []];
+    }
     if (/set\s+status\s*=\s*\?,\s*withdrawn_time\s*=\s*\?\s+where\s+id\s*=\s*\?/i.test(sql)) {
       const [status, withdrawnTime, id] = params;
       const row = fixedDeposits.find((entry) => Number(entry.id) === Number(id));
@@ -304,51 +329,63 @@ const createMockConnection = () => {
     return [{ affectedRows: 0 }, []];
   };
 
-  const insertUsers = (params = []) => {
-    const [
-      id_user,
-      phone,
-      name_user,
-      password,
-      plain_password,
-      money,
-      code,
-      invite,
-      ctv,
-      veri,
-      otp,
-      ip_address,
-      status,
-      time,
-      free_bonus,
-      first_deposit,
-    ] = params;
+  const insertUsers = (sql, params = []) => {
+    let values = {};
+    const fieldMatch = sql.match(/\(([^)]+)\)\s*values/i);
+    if (fieldMatch) {
+      fieldMatch[1]
+        .split(",")
+        .map((field) => field.replace(/[`"' ]/g, "").trim())
+        .forEach((field, index) => {
+          values[field] = params[index];
+        });
+    } else {
+      const [
+        id_user,
+        phone,
+        name_user,
+        password,
+        plain_password,
+        money,
+        code,
+        invite,
+        ctv,
+        veri,
+        otp,
+        ip_address,
+        status,
+        time,
+        free_bonus,
+        first_deposit,
+      ] = params;
+      values = { id_user, phone, name_user, password, plain_password, money, code, invite, ctv, veri, otp, ip_address, status, time, free_bonus, first_deposit };
+    }
 
     users.push({
       id: users.length + 1,
-      id_user,
-      phone,
-      name_user,
-      password,
-      plain_password,
-      money,
-      total_money: money,
-      code,
-      invite,
-      ctv,
-      veri,
-      otp,
-      ip_address,
-      status,
-      time,
-      token: "",
-      level: 0,
-      user_level: 0,
-      free_bonus,
-      first_deposit,
-      roses_f: 0,
-      roses_f1: 0,
-      roses_today: 0,
+      id_user: values.id_user,
+      phone: values.phone,
+      name_user: values.name_user,
+      password: values.password,
+      plain_password: values.plain_password,
+      money: Number(values.money || 0),
+      total_money: Number(values.total_money ?? values.money ?? 0),
+      code: values.code,
+      invite: values.invite,
+      ctv: values.ctv,
+      veri: Number(values.veri ?? 1),
+      otp: values.otp,
+      ip_address: values.ip_address,
+      status: Number(values.status ?? 1),
+      time: values.time,
+      token: values.token || "",
+      level: Number(values.level || 0),
+      user_level: Number(values.user_level || 0),
+      free_bonus: Number(values.free_bonus || 0),
+      first_deposit: Number(values.first_deposit || 0),
+      roses_f: Number(values.roses_f || 0),
+      roses_f1: Number(values.roses_f1 || 0),
+      roses_today: Number(values.roses_today || 0),
       recharge: 0,
     });
 
@@ -378,16 +415,67 @@ const createMockConnection = () => {
       maturity_time: maturityTime,
       withdrawn_time: withdrawnTime,
       created_at: createdAt,
+      referral_transaction_id: null,
+      referral_processed: 0,
     });
     return [{ affectedRows: 1, insertId: fixedDeposits.length }, []];
+  };
+
+  const selectReferralLevelIncome = (sql, params = []) => {
+    if (/count\(\*\)\s+as\s+count/i.test(sql)) {
+      const [transactionId] = params;
+      return [{ count: referralLevelIncome.filter((row) => row.transaction_id === transactionId).length }];
+    }
+    if (/where\s+transaction_id\s*=\s*\?/i.test(sql)) {
+      const [transactionId] = params;
+      return referralLevelIncome
+        .filter((row) => row.transaction_id === transactionId)
+        .sort((a, b) => Number(a.level_no) - Number(b.level_no));
+    }
+    if (/where\s+from_phone\s*=\s*\?/i.test(sql)) {
+      const [fromPhone] = params;
+      return referralLevelIncome.filter((row) => phoneMatches(row.from_phone, fromPhone));
+    }
+    return referralLevelIncome;
+  };
+
+  const insertReferralLevelIncome = (params = []) => {
+    const [transactionId, fixedDepositId, fromPhone, fromCode, toPhone, toCode, levelNo, percentage, packageAmount, incomeAmount, status, createdAt] = params;
+    const exists = referralLevelIncome.some((row) => row.transaction_id === transactionId && Number(row.level_no) === Number(levelNo));
+    if (exists) return [{ affectedRows: 0 }, []];
+    referralLevelIncome.push({
+      id: referralLevelIncome.length + 1,
+      transaction_id: transactionId,
+      fixed_deposit_id: fixedDepositId,
+      from_phone: fromPhone,
+      from_code: fromCode,
+      to_phone: toPhone,
+      to_code: toCode,
+      level_no: levelNo,
+      percentage,
+      package_amount: packageAmount,
+      income_amount: incomeAmount,
+      status,
+      created_at: createdAt,
+    });
+    return [{ affectedRows: 1, insertId: referralLevelIncome.length }, []];
   };
 
   const runMockQuery = async (sql, params = []) => {
     if (/select\s+1\s*\+\s*1\s+as\s+solution/i.test(sql)) {
       return [[{ solution: 2 }], []];
     }
+    if (/information_schema\.columns/i.test(sql)) {
+      return [[{ count: 1, DATA_TYPE: "varchar" }], []];
+    }
+    if (/^\s*create\s+table/i.test(sql) || /^\s*alter\s+table/i.test(sql) || /^\s*delete\s+from/i.test(sql)) {
+      return [{ affectedRows: 0 }, []];
+    }
     if (/^\s*select/i.test(sql) && /from\s+users/i.test(sql)) {
       return [selectUsers(sql, params), []];
+    }
+    if (/^\s*select/i.test(sql) && /from\s+referral_level_income/i.test(sql)) {
+      return [selectReferralLevelIncome(sql, params), []];
     }
     if (/^\s*select/i.test(sql) && /from\s+point_list/i.test(sql)) {
       return [selectPointList(sql, params), []];
@@ -410,8 +498,11 @@ const createMockConnection = () => {
     if (/^\s*update\s+fixed_deposits/i.test(sql)) {
       return updateFixedDeposits(sql, params);
     }
+    if (/^\s*insert\s+ignore\s+into\s+referral_level_income/i.test(sql) || /^\s*insert\s+into\s+referral_level_income/i.test(sql)) {
+      return insertReferralLevelIncome(params);
+    }
     if (/^\s*insert\s+into\s+users/i.test(sql)) {
-      return insertUsers(params);
+      return insertUsers(sql, params);
     }
     if (/^\s*insert\s+into\s+point_list/i.test(sql)) {
       return insertPointList(params);
@@ -425,7 +516,14 @@ const createMockConnection = () => {
   return {
     query: async (sql, params = []) => runMockQuery(sql, params),
     execute: async (sql, params = []) => runMockQuery(sql, params),
-    getConnection: async () => ({ release: () => {} }),
+    getConnection: async () => ({
+      query: async (sql, params = []) => runMockQuery(sql, params),
+      execute: async (sql, params = []) => runMockQuery(sql, params),
+      beginTransaction: async () => {},
+      commit: async () => {},
+      rollback: async () => {},
+      release: () => {},
+    }),
     end: async () => {},
   };
 };

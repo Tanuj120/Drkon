@@ -330,7 +330,9 @@
             },
             dataType: "json",
             success: function (response) {
-                $('.Loading').fadeOut(0);
+                if (!response || response.status === false || !response.invite || !response.info || !response.info[0]) {
+                    return;
+                }
                 $('#f1').text(response.invite.f1);
                 $('#f1_today').text(response.invite.f1_today);
                 const f1Count = response.invite.f1_today;
@@ -344,7 +346,6 @@
                 $('#roses_today').text(response.invite.roses_today);
                 $('#invite_code').text(window.location.hostname + `/register?r_code=${response.info[0].code}`);
 
-                if (response.status === false) return location.href = '/home';
                 RosesRender(response.level);
                 $('.btn-box .btn:eq(0)').attr('data-clipboard-text', response.info[0].code);
                 $('.btn-box .btn:eq(1)').attr('data-clipboard-text', window.location.hostname + `/register?r_code=${response.info[0].code}`);
@@ -355,6 +356,12 @@
                 }
 
                 makeCode();
+            },
+            error: function () {
+                console.error('Failed to load promotion data');
+            },
+            complete: function () {
+                $('.Loading').fadeOut(0);
             }
         });
 

@@ -15,6 +15,8 @@ const COPY_GAMING_AMOUNT_STEP = 500;
 const MINIMUM_DEPOSIT_AMOUNT = 500;
 const MINIMUM_WITHDRAW_AMOUNT = 1000;
 const DAY_IN_MS = 86400000;
+const LEVEL_INCOME_PERCENTAGES = [5, 3, 2, 1, 1, 1, 1, 1];
+const LEVEL_INCOME_PACKAGE_DAYS = 90;
 
 const formatMoney = (value) => Number(Number(value || 0).toFixed(2));
 
@@ -60,11 +62,144 @@ const ensureFixedDepositsTable = async () => {
             maturity_time BIGINT NOT NULL DEFAULT 0,
             withdrawn_time BIGINT NOT NULL DEFAULT 0,
             created_at BIGINT NOT NULL DEFAULT 0,
+            referral_transaction_id VARCHAR(100) DEFAULT NULL,
+            referral_processed TINYINT NOT NULL DEFAULT 0,
             PRIMARY KEY (id),
             KEY idx_fixed_deposits_phone_status (phone, status),
             KEY idx_fixed_deposits_maturity (maturity_time)
         )
     `);
+    await addColumnIfMissing('fixed_deposits', 'referral_transaction_id', 'ALTER TABLE fixed_deposits ADD COLUMN referral_transaction_id VARCHAR(100) DEFAULT NULL');
+    await addColumnIfMissing('fixed_deposits', 'referral_processed', 'ALTER TABLE fixed_deposits ADD COLUMN referral_processed TINYINT NOT NULL DEFAULT 0');
+}
+
+const addColumnIfMissing = async (tableName, columnName, sql) => {
+    try {
+        const [rows] = await connection.query(
+            'SELECT COUNT(*) AS count FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+            [tableName, columnName]
+        );
+        if (Number(rows?.[0]?.count || 0) > 0) return;
+        await connection.execute(sql);
+    } catch (error) {
+        if (error?.code !== 'ER_DUP_FIELDNAME') throw error;
+    }
+}
+
+const ensureReferralLevelIncomeTable = async () => {
+    await connection.execute(`
+        CREATE TABLE IF NOT EXISTS referral_level_income (
+            id INT NOT NULL AUTO_INCREMENT,
+            transaction_id VARCHAR(100) NOT NULL,
+            fixed_deposit_id INT NOT NULL,
+            from_phone VARCHAR(20) NOT NULL,
+            from_code VARCHAR(64) DEFAULT NULL,
+            to_phone VARCHAR(20) NOT NULL,
+            to_code VARCHAR(64) DEFAULT NULL,
+            level_no INT NOT NULL,
+            percentage DECIMAL(10,2) NOT NULL DEFAULT 0,
+            package_amount DECIMAL(20,2) NOT NULL DEFAULT 0,
+            income_amount DECIMAL(20,2) NOT NULL DEFAULT 0,
+            status VARCHAR(20) NOT NULL DEFAULT 'credited',
+            created_at BIGINT NOT NULL DEFAULT 0,
+            PRIMARY KEY (id),
+            UNIQUE KEY uq_referral_level_transaction (transaction_id, level_no),
+            KEY idx_referral_level_to_phone (to_phone),
+            KEY idx_referral_level_from_phone (from_phone),
+            KEY idx_referral_level_deposit (fixed_deposit_id)
+        )
+    `);
+}
+
+const ensureCopyGamingReferralSchema = async () => {
+    await ensureFixedDepositsTable();
+    await ensureReferralLevelIncomeTable();
+}
+
+const getTransactionClient = async () => {
+    const skipDb = (process.env.SKIP_DB || '').toString().trim().toLowerCase() === 'true';
+    if (skipDb || typeof connection.getConnection !== 'function') {
+        return {
+            db: connection,
+            begin: async () => {},
+            commit: async () => {},
+            rollback: async () => {},
+            release: () => {},
+        };
+    }
+
+    const db = await connection.getConnection();
+    return {
+        db,
+        begin: () => db.beginTransaction(),
+        commit: () => db.commit(),
+        rollback: () => db.rollback(),
+        release: () => db.release(),
+    };
+}
+
+const distributeCopyGamingLevelIncome = async (db, { buyer, amount, fixedDepositId, transactionId }) => {
+    const credited = [];
+    const [existingRows] = await db.query(
+        'SELECT COUNT(*) AS count FROM referral_level_income WHERE transaction_id = ?',
+        [transactionId]
+    );
+    if (Number(existingRows?.[0]?.count || 0) > 0) {
+        return credited;
+    }
+
+    let referralCode = String(buyer.invite || '').trim();
+    const buyerCode = String(buyer.code || '').trim();
+    const visitedCodes = new Set([buyerCode].filter(Boolean));
+    const visitedPhones = new Set([String(buyer.phone || '')].filter(Boolean));
+
+    for (let index = 0; index < LEVEL_INCOME_PERCENTAGES.length; index++) {
+        if (!referralCode || visitedCodes.has(referralCode)) break;
+
+        const [referrerRows] = await db.query(
+            'SELECT phone, code, invite, status, veri FROM users WHERE code = ? LIMIT 1',
+            [referralCode]
+        );
+        const referrer = referrerRows?.[0];
+        if (!referrer) break;
+
+        const referrerPhone = String(referrer.phone || '');
+        const referrerCode = String(referrer.code || '').trim();
+        if (!referrerPhone || !referrerCode || visitedPhones.has(referrerPhone) || referrerPhone === buyer.phone || referrerCode === buyerCode) {
+            break;
+        }
+
+        visitedPhones.add(referrerPhone);
+        visitedCodes.add(referrerCode);
+
+        const isActiveUser = Number(referrer.status) === 1 && Number(referrer.veri) === 1;
+        if (isActiveUser) {
+            const levelNo = index + 1;
+            const percentage = LEVEL_INCOME_PERCENTAGES[index];
+            const incomeAmount = formatMoney((amount * percentage) / 100);
+            if (incomeAmount > 0) {
+                const [insertResult] = await db.execute(
+                    `INSERT IGNORE INTO referral_level_income
+                    (transaction_id, fixed_deposit_id, from_phone, from_code, to_phone, to_code, level_no, percentage, package_amount, income_amount, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [transactionId, fixedDepositId, buyer.phone, buyerCode, referrerPhone, referrerCode, levelNo, percentage, amount, incomeAmount, 'credited', Date.now()]
+                );
+
+                if (insertResult.affectedRows > 0) {
+                    const directIncome = levelNo === 1 ? incomeAmount : 0;
+                    await db.execute(
+                        'UPDATE users SET money = money + ?, roses_f = roses_f + ?, roses_f1 = roses_f1 + ?, roses_today = roses_today + ? WHERE phone = ? AND status = 1 AND veri = 1',
+                        [incomeAmount, incomeAmount, directIncome, incomeAmount, referrerPhone]
+                    );
+                    credited.push({ level: levelNo, phone: referrerPhone, amount: incomeAmount, percentage });
+                }
+            }
+        }
+
+        referralCode = String(referrer.invite || '').trim();
+    }
+
+    return credited;
 }
 
 const getUserByAuth = async (auth) => {
@@ -345,7 +480,7 @@ const createFixedDeposit = async (req, res) => {
             });
         }
 
-        await ensureFixedDepositsTable();
+        await ensureCopyGamingReferralSchema();
 
         const now = Date.now();
         const {
@@ -359,32 +494,57 @@ const createFixedDeposit = async (req, res) => {
             start_time: now,
         });
 
-        const [deductResult] = await connection.execute(
-            'UPDATE users SET money = money - ? WHERE token = ? AND money >= ?',
-            [amount, auth, amount]
-        );
-        if (!deductResult.affectedRows) {
-            return res.status(200).json({
-                message: 'Insufficient wallet balance',
-                status: false,
-                timeStamp: timeNow,
-            });
-        }
-
+        const transaction = await getTransactionClient();
+        let fixedDepositId = null;
+        let creditedReferralIncome = [];
         try {
-            await connection.execute(
+            await transaction.begin();
+            const [deductResult] = await transaction.db.execute(
+                'UPDATE users SET money = money - ? WHERE token = ? AND money >= ?',
+                [amount, auth, amount]
+            );
+            if (!deductResult.affectedRows) {
+                await transaction.rollback();
+                return res.status(200).json({
+                    message: 'Insufficient wallet balance',
+                    status: false,
+                    timeStamp: timeNow,
+                });
+            }
+
+            const [insertResult] = await transaction.db.execute(
                 'INSERT INTO fixed_deposits (phone, amount, tenure_days, daily_rate, total_interest, maturity_amount, status, start_time, maturity_time, withdrawn_time, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [user.phone, amount, plan.days, plan.dailyRate, totalInterest, maturityAmount, 'active', now, maturityTime, 0, now]
             );
-        } catch (insertError) {
-            await connection.execute('UPDATE users SET money = money + ? WHERE token = ?', [amount, auth]);
-            throw insertError;
+            fixedDepositId = insertResult.insertId;
+
+            if (Number(plan.days) === LEVEL_INCOME_PACKAGE_DAYS && fixedDepositId) {
+                const referralTransactionId = `COPY_GAMING_${LEVEL_INCOME_PACKAGE_DAYS}_${fixedDepositId}`;
+                creditedReferralIncome = await distributeCopyGamingLevelIncome(transaction.db, {
+                    buyer: user,
+                    amount,
+                    fixedDepositId,
+                    transactionId: referralTransactionId,
+                });
+                await transaction.db.execute(
+                    'UPDATE fixed_deposits SET referral_transaction_id = ?, referral_processed = ? WHERE id = ? AND phone = ?',
+                    [referralTransactionId, 1, fixedDepositId, user.phone]
+                );
+            }
+
+            await transaction.commit();
+        } catch (transactionError) {
+            await transaction.rollback();
+            throw transactionError;
+        } finally {
+            transaction.release();
         }
 
         return res.status(200).json({
             message: `Copy Gaming created for ${plan.days} days`,
             status: true,
             data: buildFixedDepositSummary(await getFixedDepositRows(user.phone)),
+            referralIncome: creditedReferralIncome,
             timeStamp: timeNow,
         });
     } catch (error) {
@@ -827,10 +987,11 @@ const promotion = async (req, res) => {
         });
     }
 
+    try {
     const [user] = await connection.query('SELECT `phone`, `code`,`invite`, `roses_f`, `roses_f1`, `roses_today` FROM users WHERE `token` = ? ', [auth]);
     const [level] = await connection.query('SELECT * FROM level');
 
-    if (!user) {
+    if (!user || !user[0]) {
         return res.status(200).json({
             message: 'Failed',
             status: false,
@@ -841,7 +1002,8 @@ const promotion = async (req, res) => {
     let userInfo = user[0];
 
     // Directly referred level-1 users
-    const [f1s] = await connection.query('SELECT `phone`, `code`,`invite`, `time` FROM users WHERE `invite` = ? ', [userInfo.code]);
+    const [f1Rows] = await connection.query('SELECT `phone`, `code`,`invite`, `time` FROM users WHERE `invite` = ? ', [userInfo.code]);
+    const f1s = f1Rows.filter((row) => row.code && row.code !== userInfo.code && row.phone !== userInfo.phone);
 
     // Directly referred users today
     let f1_today = 0;
@@ -926,16 +1088,19 @@ const promotion = async (req, res) => {
     }
 
     let selectedData = [];
+    const visitedCodes = new Set([userInfo.code].filter(Boolean));
 
     async function fetchInvitesByCode(code, depth = 1) {
-        if (depth > 6) {
+        if (!code || depth > 8 || visitedCodes.has(code)) {
             return;
         }
+        visitedCodes.add(code);
 
         const [inviteData] = await connection.query('SELECT `id_user`,`name_user`,`phone`, `code`, `invite`, `rank`, `user_level`, `total_money` FROM users WHERE `invite` = ?', [code]);
 
         if (inviteData.length > 0) {
             for (const invite of inviteData) {
+                if (!invite.code || visitedCodes.has(invite.code) || invite.phone === userInfo.phone) continue;
                 selectedData.push(invite);
                 await fetchInvitesByCode(invite.code, depth + 1);
             }
@@ -944,6 +1109,7 @@ const promotion = async (req, res) => {
 
     if (f1s.length > 0) {
         for (const initialInfoF1 of f1s) {
+            if (!initialInfoF1.code || visitedCodes.has(initialInfoF1.code)) continue;
             selectedData.push(initialInfoF1);
             await fetchInvitesByCode(initialInfoF1.code);
         }
@@ -970,6 +1136,14 @@ const promotion = async (req, res) => {
         },
         timeStamp: timeNow,
     });
+    } catch (error) {
+        console.error('Promotion load failed:', error);
+        return res.status(200).json({
+            message: 'Failed to load promotion data',
+            status: false,
+            timeStamp: timeNow,
+        });
+    }
 
 }
 
@@ -1010,8 +1184,9 @@ const listMyTeam = async (req, res) => {
             timeStamp: timeNow,
         })
     }
+    try {
     const [user] = await connection.query('SELECT `phone`, `code`,`invite` FROM users WHERE `token` = ? ', [auth]);
-    if (!user) {
+    if (!user || !user[0]) {
         return res.status(200).json({
             message: 'Failed',
             status: false,
@@ -1024,15 +1199,18 @@ const listMyTeam = async (req, res) => {
     const [total_roses] = await connection.query('SELECT `f1`,`invite`, `code`,`phone`,`time` FROM roses WHERE `invite` = ? ORDER BY id DESC LIMIT 100', [userInfo.code]);
 
     const selectedData = [];
+    const visitedCodes = new Set([userInfo.code].filter(Boolean));
 
     async function fetchUserDataByCode(code, depth = 1) {
-        if (depth > 6) {
+        if (!code || depth > 8 || visitedCodes.has(code)) {
             return;
         }
+        visitedCodes.add(code);
 
         const [userData] = await connection.query('SELECT `id_user`, `name_user`, `phone`, `code`, `invite`, `rank`, `total_money` FROM users WHERE `invite` = ?', [code]);
         if (userData.length > 0) {
             for (const user of userData) {
+                if (!user.code || visitedCodes.has(user.code) || user.phone === userInfo.phone) continue;
                 const [turnoverData] = await connection.query('SELECT `phone`, `daily_turn_over`, `total_turn_over` FROM turn_over WHERE `phone` = ?', [user.phone]);
                 const [inviteCountData] = await connection.query('SELECT COUNT(*) as invite_count FROM users WHERE `invite` = ?', [user.code]);
                 const inviteCount = inviteCountData[0].invite_count;
@@ -1073,6 +1251,18 @@ const listMyTeam = async (req, res) => {
         status: true,
         timeStamp: timeNow,
     });
+    } catch (error) {
+        console.error('My team load failed:', error);
+        return res.status(200).json({
+            message: 'Failed to load team data',
+            f1: [],
+            f1_direct: [],
+            mem: [],
+            total_roses: [],
+            status: false,
+            timeStamp: timeNow,
+        });
+    }
 
 }
 const wowpay = async (req, res) => {

@@ -38,6 +38,17 @@ const isInternationalPhoneNumber = (phone) => {
     return /^[1-9]\d{7,18}$/.test(phone);
 }
 
+const generateUniqueReferralCode = async () => {
+    for (let attempt = 0; attempt < 20; attempt++) {
+        const code = randomString(5) + randomNumber(10000, 99999);
+        const [rows] = await connection.query('SELECT id FROM users WHERE code = ? LIMIT 1', [code]);
+        if (!rows.length) {
+            return code;
+        }
+    }
+    throw new Error('Unable to generate unique invite code');
+}
+
 const getLastTenDigits = (phone) => {
     const digits = cleanPhoneNumber(phone);
     return digits.length > 10 ? digits.slice(-10) : digits;
@@ -471,7 +482,7 @@ const register = async (req, res) => {
     let id_user = randomNumber(10000, 99999);
     let otp2 = randomNumber(100000, 999999);
     let name_user = "Member" + randomNumber(10000, 99999);
-    let code = randomString(5) + randomNumber(10000, 99999);
+    let code = '';
     let ip = ipAddress(req);
     let time = timeCreate();
 
@@ -502,6 +513,13 @@ const register = async (req, res) => {
             });
         } else {
             if (check_i.length == 1) {
+                if (String(check_i[0].phone || '') === String(username || '')) {
+                    return res.status(200).json({
+                        message: 'Self referral is not allowed',
+                        status: false
+                    });
+                }
+                code = await generateUniqueReferralCode();
                 // if (check_ip.length <= 3) {
                 let ctv = '';
                 if (check_i[0].level == 2) {
