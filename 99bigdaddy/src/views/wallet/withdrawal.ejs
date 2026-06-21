@@ -7597,7 +7597,7 @@
                                     onclick="location.href='/wallet/addBank'"><span data-v-25d9c352=""
                                         class="plus c-row c-row-middle-center">
                                         <i class="fa-regular fa-plus fa-fade" style="color: #8f5206"></i>
-                                    </span> Add BankCard</div>
+                                    </span> Add USDT Address</div>
                             </div>
                         </div>
                     </div>
@@ -7693,7 +7693,8 @@
                 $('.conBox .list').append(
                     `
                     <div data-v-25d9c352="" class="item c-row c-row-between c-row-middle-center">
-                        <div data-v-25d9c352="" class="name van-ellipsis">
+                        <div data-v-25d9c352="" class="name" style="line-height:1.35; max-width:85%; overflow-wrap:anywhere;">
+                            <strong data-v-25d9c352="">${data.name_bank || 'Bep 20 Network'}</strong><br>
                             <span data-v-25d9c352="">${data.stk}</span>
                         </div>
                         <div data-v-25d9c352="" class="icon action c-row c-row-middle-center">

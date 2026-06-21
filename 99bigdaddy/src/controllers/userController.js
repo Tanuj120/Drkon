@@ -1296,30 +1296,37 @@ const cancelRecharge = async (req, res) => {
 
 const addBank = async (req, res) => {
     let auth = req.cookies.auth;
-    let name_bank = req.body.name_bank;
-    let name_user = req.body.name_user;
-    let stk = req.body.stk;
-    let email = req.body.email;
-    let tinh = req.body.tinh;
+    let name_bank = (req.body.name_bank || '').trim();
+    let name_user = (req.body.name_user || '').trim();
+    let stk = (req.body.stk || '').trim();
+    let email = (req.body.email || '').trim();
+    let tinh = (req.body.tinh || '').trim();
     let time = new Date().getTime();
 
     if (!auth || !name_bank || !name_user || !stk || !email || !tinh) {
         return res.status(200).json({
-            message: 'Failed',
+            message: 'Please enter full information',
+            status: false,
+            timeStamp: time,
+        })
+    }
+    if (!/^0x[a-fA-F0-9]{40}$/.test(stk)) {
+        return res.status(200).json({
+            message: 'Please enter a valid BEP20 USDT address',
             status: false,
             timeStamp: time,
         })
     }
     const [user] = await connection.query('SELECT `phone`, `code`,`invite` FROM users WHERE `token` = ? ', [auth]);
-    let userInfo = user[0];
-    if (!user) {
+    if (!user.length) {
         return res.status(200).json({
             message: 'Failed',
             status: false,
             timeStamp: timeNow,
         });
     };
-    const [user_bank] = await connection.query('SELECT * FROM user_bank WHERE stk = ? ', [stk]);
+    let userInfo = user[0];
+    const [user_bank] = await connection.query('SELECT * FROM user_bank WHERE stk = ? AND phone != ? ', [stk, userInfo.phone]);
     const [user_bank2] = await connection.query('SELECT * FROM user_bank WHERE phone = ? ', [userInfo.phone]);
     if (user_bank.length == 0 && user_bank2.length == 0) {
         const sql = `INSERT INTO user_bank SET 
@@ -1332,22 +1339,21 @@ const addBank = async (req, res) => {
         time = ?`;
         await connection.execute(sql, [userInfo.phone, name_bank, name_user, stk, email, tinh, time]);
         return res.status(200).json({
-            message: 'Successfully added bank',
+            message: 'USDT address added successfully',
             status: true,
             timeStamp: timeNow,
         });
     } else if (user_bank.length > 0) {
-        await connection.query('UPDATE user_bank SET stk = ? WHERE phone = ? ', [stk, userInfo.phone]);
         return res.status(200).json({
-            message: 'Account number updated in the system',
+            message: 'This USDT address is already used',
             status: false,
             timeStamp: timeNow,
         });
     } else if (user_bank2.length > 0) {
         await connection.query('UPDATE user_bank SET name_bank = ?, name_user = ?, stk = ?, email = ?, tinh = ?, time = ? WHERE phone = ?', [name_bank, name_user, stk, email, tinh, time, userInfo.phone]);
         return res.status(200).json({
-            message: 'your account is updated',
-            status: false,
+            message: 'USDT address updated successfully',
+            status: true,
             timeStamp: timeNow,
         });
     }
