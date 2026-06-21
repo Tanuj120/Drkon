@@ -241,7 +241,7 @@ const betWinGo = async (req, res) => {
     if (typeid != 1 && typeid != 3 && typeid != 5 && typeid != 10) {
         return res.status(200).json({
             message: 'Error!',
-            status: true
+            status: false
         });
     }
 
@@ -257,7 +257,7 @@ const betWinGo = async (req, res) => {
     if (!winGoNow[0] || !user[0] || !isNumber(x) || !isNumber(money)) {
         return res.status(200).json({
             message: 'Error!',
-            status: true
+            status: false
         });
     }
 
@@ -440,7 +440,7 @@ const listOrderOld = async (req, res) => {
     if (typeid != 1 && typeid != 3 && typeid != 5 && typeid != 10) {
         return res.status(200).json({
             message: 'Error!',
-            status: true
+            status: false
         });
     }
     if (pageno < 0 || pageto < 0) {
@@ -481,7 +481,7 @@ const listOrderOld = async (req, res) => {
     if (pageno === undefined || pageto === undefined || !user[0] || !wingo[0] || !period[0]) {
         return res.status(200).json({
             message: 'Error!',
-            status: true
+            status: false
         });
     }
     let page = Math.ceil(wingoAll.length / 10);
@@ -503,7 +503,7 @@ const GetMyEmerdList = async (req, res) => {
     if (typeid != 1 && typeid != 3 && typeid != 5 && typeid != 10) {
         return res.status(200).json({
             message: 'Error!',
-            status: true
+            status: false
         });
     }
 
@@ -531,7 +531,7 @@ const GetMyEmerdList = async (req, res) => {
     if (!user[0]) {
         return res.status(200).json({
             message: 'User not found or not verified!',
-            status: true
+            status: false
         });
     }
 
@@ -575,7 +575,7 @@ const GetMyEmerdList = async (req, res) => {
     if (pageno === undefined || pageto === undefined || !user[0] || !minutes_1[0]) {
         return res.status(200).json({
             message: 'Error!',
-            status: true
+            status: false
         });
     }
 

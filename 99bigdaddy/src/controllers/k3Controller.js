@@ -1170,7 +1170,7 @@ const GetMyEmerdList = async (req, res) => {
     if (pageno === undefined || pageto === undefined || !user[0] || !result_5d[0]) {
         return res.status(200).json({
             message: 'Error!',
-            status: true
+            status: false
         });
     }
     let page = Math.ceil(result_5dAll.length / 10);

@@ -1,3 +1,4 @@
+if (typeof socket !== 'undefined' && socket && typeof socket.on === 'function') {
 socket.on("data-server-k3", function (msg) {
     if (msg && Array.isArray(msg.data) && msg.data.length > 1) {
         let checkData = $('html').attr('data-dpr');
@@ -27,6 +28,7 @@ socket.on("data-server-k3", function (msg) {
         }
     }
 });
+}
 
 function ShowListOrder(list_orders) {
     if (list_orders.length == 0) {
@@ -158,17 +160,23 @@ function callListOrder() {
         },
         dataType: "json",
         success: function (response) {
-            let list_orders = response.data.gameslist;
-            $("#period").text(response.period);
-            $("#number_result").text("1/" + response.page);
+            let list_orders = response?.data?.gameslist || [];
+            if (response?.period) $("#period").text(response.period);
+            $("#number_result").text("1/" + (response?.page || 1));
             ShowListOrder(list_orders);
-            $('.Loading').fadeOut(0);
             if (!list_orders.length) return;
             let result = String(list_orders[0].result).split('');
             $('.slot-transform:eq(0) .slot-num').attr('class', `slot-num bg${result[0]}`);
             $('.slot-transform:eq(1) .slot-num').attr('class', `slot-num bg${result[1]}`);
             $('.slot-transform:eq(2) .slot-num').attr('class', `slot-num bg${result[2]}`);
         },
+        error: function () {
+            ShowListOrder([]);
+            alertMess('Network error, please try again.');
+        },
+        complete: function () {
+            $('.Loading').fadeOut(0);
+        }
     });
 }
 
@@ -185,11 +193,17 @@ function callAjaxMeJoin() {
         },
         dataType: "json",
         success: function (response) {
-            let data = response.data.gameslist;
-            $("#number_result").text("1/" + response.page);
+            let data = response?.data?.gameslist || [];
+            $("#number_result").text("1/" + (response?.page || 1));
             GetMyEmerdList(data);
-            $('.Loading').fadeOut(0);
         },
+        error: function () {
+            GetMyEmerdList([]);
+            alertMess('Network error, please try again.');
+        },
+        complete: function () {
+            $('.Loading').fadeOut(0);
+        }
     });
 }
 
@@ -259,7 +273,6 @@ $("#next").click(function (e) {
         },
         dataType: "json",
         success: async function (response) {
-            $('.Loading').fadeOut(0);
             if (response.status === false) {
                 pageno -= 10;
                 $("#next").addClass("block-click");
@@ -268,15 +281,22 @@ $("#next").click(function (e) {
                 alertMess(response.msg);
                 return false;
             }
-            let list_orders = response.data.gameslist;
-            $("#period").text(response.period);
-            $("#number_result").text(++page + "/" + response.page);
+            let list_orders = response?.data?.gameslist || [];
+            if (response?.period) $("#period").text(response.period);
+            $("#number_result").text(++page + "/" + (response?.page || 1));
             if (check == 'all') {
                 ShowListOrder(list_orders);
             } else {
                 GetMyEmerdList(list_orders);
             }
         },
+        error: function () {
+            pageno -= 10;
+            alertMess('Network error, please try again.');
+        },
+        complete: function () {
+            $('.Loading').fadeOut(0);
+        }
     });
 });
 $("#previous").click(function (e) {
@@ -304,7 +324,6 @@ $("#previous").click(function (e) {
         },
         dataType: "json",
         success: async function (response) {
-            $('.Loading').fadeOut(0);
             if (page - 1 < 2) {
                 $("#previous").addClass("block-click");
                 $("#previous").removeClass("action");
@@ -318,14 +337,21 @@ $("#previous").click(function (e) {
                 alertMess(response.msg);
                 return false;
             }
-            let list_orders = response.data.gameslist;
-            $("#period").text(response.period);
-            $("#number_result").text(--page + "/" + response.page);
+            let list_orders = response?.data?.gameslist || [];
+            if (response?.period) $("#period").text(response.period);
+            $("#number_result").text(--page + "/" + (response?.page || 1));
             if (check == 'all') {
                 ShowListOrder(list_orders);
             } else {
                 GetMyEmerdList(list_orders);
             }
         },
+        error: function () {
+            pageno += 10;
+            alertMess('Network error, please try again.');
+        },
+        complete: function () {
+            $('.Loading').fadeOut(0);
+        }
     });
 });

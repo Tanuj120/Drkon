@@ -77,7 +77,8 @@ function totalMoney4() {
     $('.result').text(result + '');
 }
 
-const socket = io();
+window.socket = window.socket || ((typeof io !== 'undefined') ? io() : null);
+var socket = window.socket;
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -930,6 +931,12 @@ function alertMess(mess) {
     }, 1000);
 }
 
+function safeSocketEmit(eventName, payload) {
+    if (typeof socket !== 'undefined' && socket && typeof socket.emit === 'function') {
+        socket.emit(eventName, payload);
+    }
+}
+
 function sendGame1() {
     let join = '';
     let countwe = $('.bet-con[game="1"] .list-join-total .item .action');
@@ -955,7 +962,7 @@ function sendGame1() {
             let change = String(response.change);
             if (response.status) {
                 $('.moneyU').text(response.money + '');
-                socket.emit('data-server-3', { change, gameJoin: 1, listJoin, money, xvalue, game: $('html').attr('data-dpr') });
+                safeSocketEmit('data-server-3', { change, gameJoin: 1, listJoin, money, xvalue, game: $('html').attr('data-dpr') });
             }
             dropDown();
         }
@@ -998,7 +1005,7 @@ function sendGame2() {
             let change = String(response.change);
             if (response.status) {
                 $('.moneyU').text(response.money + '');
-                socket.emit('data-server-3', { change, gameJoin: 2, listJoin, money, xvalue, game: $('html').attr('data-dpr') });
+                safeSocketEmit('data-server-3', { change, gameJoin: 2, listJoin, money, xvalue, game: $('html').attr('data-dpr') });
             }
             dropDown();
         }
@@ -1037,7 +1044,7 @@ function sendGame3() {
             let change = String(response.change);
             if (response.status) {
                 $('.moneyU').text(response.money + '');
-                socket.emit('data-server-3', { change, gameJoin: 3, listJoin, money, xvalue, game: $('html').attr('data-dpr') });
+                safeSocketEmit('data-server-3', { change, gameJoin: 3, listJoin, money, xvalue, game: $('html').attr('data-dpr') });
             }
             dropDown();
         }
@@ -1085,7 +1092,7 @@ function sendGame4() {
             let change = String(response.change);
             if (response.status) {
                 $('.moneyU').text(response.money + '');
-                socket.emit('data-server-3', { change, gameJoin: 4, listJoin, money, xvalue, game: $('html').attr('data-dpr') });
+                safeSocketEmit('data-server-3', { change, gameJoin: 4, listJoin, money, xvalue, game: $('html').attr('data-dpr') });
             }
             dropDown();
         }

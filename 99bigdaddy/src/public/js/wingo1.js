@@ -54,12 +54,19 @@ function showListOrder3(list_orders, x) {
   $(`.game-list .con-box:eq(${x}) .hb`).prepend(htmls);
   $(`.game-list .con-box:eq(${x}) .hb .c-tc`).last().remove();
 }
-var socket = io();
+var socket = (typeof io !== 'undefined') ? io() : null;
 var pageno = 0;
 var limit = 10;
 var page = 1;
+function getGameList(response) {
+  return response && response.data && Array.isArray(response.data.gameslist) ? response.data.gameslist : [];
+}
+function getGamePage(response) {
+  return response && response.page ? response.page : 1;
+}
+if (socket) {
 socket.on("data-server", function (msg) {
-  if (!msg || !Array.isArray(msg.data) || !msg.data.length) return;
+  if (!msg || !Array.isArray(msg.data) || msg.data.length < 2) return;
   if (msg.data[0].game != 'wingo') return;
   $(".Loading").fadeIn(0);
   setTimeout(() => {
@@ -113,9 +120,9 @@ socket.on("data-server", function (msg) {
       },
       dataType: "json",
       success: function (response) {
-        let data = response.data.gameslist;
+        let data = getGameList(response);
         $(".game-list .con-box:eq(1) .page-nav .number").text(
-          "1/" + (response.page ? response.page : '1')
+          "1/" + getGamePage(response)
         );
 
         // Set the value of firstGame to the first game in the gameslist
@@ -137,9 +144,9 @@ socket.on("data-server", function (msg) {
           },
           dataType: "json",
           success: function (response) {
-            let list_orders = response.data.gameslist;
+            let list_orders = getGameList(response);
             $(".time-box .info .number").text(response.period);
-            $(".game-list .con-box:eq(0) .page-nav .number").text("1/" + response.page);
+            $(".game-list .con-box:eq(0) .page-nav .number").text("1/" + getGamePage(response));
 
             // Assuming firstGame is defined somewhere in your code
             if (firstGame && list_orders.length && firstGame.stage === list_orders[0].period) {
@@ -230,6 +237,7 @@ socket.on("data-server", function (msg) {
     $(".Loading").fadeOut(0);
   }, 1000);
 });
+}
 // $('body').click(function (e) {
 //     e.preventDefault();
 //     socket.emit('data-server', {
@@ -608,11 +616,11 @@ $(".game-list .tab .li:eq(0)").click(function (e) {
     },
     dataType: "json",
     success: function (response) {
-      let list_orders = response.data.gameslist;
+      let list_orders = getGameList(response);
       $(".time-box .info .number").text(response.period);
-      $(".page-nav .number").text("1/" + response.page);
+      $(".page-nav .number").text("1/" + getGamePage(response));
       $(".game-list .con-box:eq(0) .page-nav .number").text(
-        "1/" + response.page
+        "1/" + getGamePage(response)
       );
       showListOrder(list_orders, 0);
     },
@@ -637,9 +645,9 @@ $(".game-list .tab .li:eq(1)").click(function (e) {
     },
     dataType: "json",
     success: function (response) {
-      let data = response.data.gameslist;
+      let data = getGameList(response);
       $(".game-list .con-box:eq(1) .page-nav .number").text(
-        "1/" + `${(response.page) ? response.page : '1'}`
+        "1/" + getGamePage(response)
       );
 
       showListOrder2(data, 1);
@@ -681,11 +689,11 @@ $(".game-list .tab .li:eq(2)").click(function (e) {
     },
     dataType: "json",
     success: function (response) {
-      let list_orders = response.data.gameslist;
+      let list_orders = getGameList(response);
       $(".time-box .info .number").text(response.period);
-      $(".page-nav .number").text("1/" + response.page);
+      $(".page-nav .number").text("1/" + getGamePage(response));
       $(".game-list .con-box:eq(2) .page-nav .number").text(
-        "1/" + response.page
+        "1/" + getGamePage(response)
       );
       showListOrder_t(list_orders, 2);
 
@@ -708,6 +716,11 @@ function alertMessJoin(msg) {
       $("body .msg").remove();
     }, 500);
   }, 1000);
+}
+function safeSocketEmit(eventName, payload) {
+  if (typeof socket !== 'undefined' && socket && typeof socket.emit === 'function') {
+    socket.emit(eventName, payload);
+  }
 }
 $(".foot .right").click(function (e) {
   e.preventDefault();
@@ -732,9 +745,9 @@ $(".foot .right").click(function (e) {
       alertMessJoin(response.message || 'Bet request completed');
       if (response.status === false) return;
       if (response.data) $("#history-order").prepend(response.data);
-      $(".total-box .num span").text("? " + response.money);
+      $(".total-box .num span").text("₹ " + response.money);
       if (typeof callAjaxMeJoin === 'function') callAjaxMeJoin();
-      socket.emit('data-server_2', { money: x * money, join, time: Date.now(), change: response.change });
+      safeSocketEmit('data-server_2', { money: x * money, join, time: Date.now(), change: response.change });
     },
     error: function (xhr) {
       const message = xhr?.responseJSON?.message || 'Network error, please try again.';
@@ -1225,9 +1238,9 @@ $.ajax({
   },
   dataType: "json",
   success: function (response) {
-    let list_orders = response.data.gameslist;
+    let list_orders = getGameList(response);
     $(".time-box .info .number").text(response.period);
-    $(".game-list .con-box:eq(0) .page-nav .number").text("1/" + response.page);
+    $(".game-list .con-box:eq(0) .page-nav .number").text("1/" + getGamePage(response));
     showListOrder(list_orders, 0);
   },
 });
@@ -1284,8 +1297,8 @@ $.ajax({
   },
   dataType: "json",
   success: function (response) {
-    let data = response.data.gameslist;
-    $(".game-list .con-box:eq(1) .page-nav .number").text("1/" + `${(response.page) ? response.page : '1'}`);
+    let data = getGameList(response);
+    $(".game-list .con-box:eq(1) .page-nav .number").text("1/" + getGamePage(response));
     showListOrder2(data, 1);
   },
 });
@@ -1333,9 +1346,9 @@ $(".game-list .con-box:eq(0) .page-nav .arr:eq(1)").click(function (e) {
       );
       page += 1;
       $(".game-list .con-box:eq(0) .page-nav .number").text(
-        page + "/" + response.page
+        page + "/" + getGamePage(response)
       );
-      let list_orders = response.data.gameslist;
+      let list_orders = getGameList(response);
       $(".time-box .info .number").text(response.period);
       showListOrder(list_orders, 0);
     },
@@ -1393,9 +1406,9 @@ $(".game-list .con-box:eq(0) .page-nav .arr:eq(0)").click(function (e) {
       }
       page -= 1;
       $(".game-list .con-box:eq(0) .page-nav .number").text(
-        page + "/" + response.page
+        page + "/" + getGamePage(response)
       );
-      let list_orders = response.data.gameslist;
+      let list_orders = getGameList(response);
       $(".time-box .info .number").text(response.period);
       showListOrder(list_orders, 0);
     },
@@ -1446,9 +1459,9 @@ $(".game-list .con-box:eq(1) .page-nav .arr:eq(1)").click(function (e) {
       page += 1;
       console.log(page);
       $(".game-list .con-box:eq(1) .page-nav .number").text(
-        "1/" + `${(response.page) ? response.page : '1'}`
+        "1/" + getGamePage(response)
       );
-      let list_orders = response.data.gameslist;
+      let list_orders = getGameList(response);
       $(".time-box .info .number").text(response.period);
       showListOrder2(list_orders, 1);
     },
@@ -1522,9 +1535,9 @@ $(".game-list .con-box:eq(1) .page-nav .arr:eq(0)").click(function (e) {
       }
       page -= 1;
       $(".game-list .con-box:eq(1) .page-nav .number").text(
-        "1/" + `${(response.page) ? response.page : '1'}`
+        "1/" + getGamePage(response)
       );
-      let list_orders = response.data.gameslist;
+      let list_orders = getGameList(response);
       $(".time-box .info .number").text(response.period);
       showListOrder2(list_orders, 1);
     },
