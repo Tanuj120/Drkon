@@ -88,7 +88,7 @@
                             </div>
                             <div data-v-7c8bbbf4="" class="btn-list c-row c-row-middle-center">
                                 <div data-v-7c8bbbf4="" class="btn-box">
-                                    <div data-v-7c8bbbf4="" class="btn m-b-10 c-row c-row-middle-center tag-read"
+                                    <div data-v-7c8bbbf4="" class="btn m-b-10 c-row c-row-middle-center tag-read copy-invite-code"
                                         data-clipboard-text="">Copy Invitation Code</div>
                                     <div data-v-7c8bbbf4="" data-clipboard-text=""
                                         class="btn m-b-10 c-row c-row-middle-center tag-read">Copy Link</div>
@@ -97,7 +97,7 @@
                         </div>
                         <br />
                         <div>
-                            <center style="font-size: 20px;">Invite Link:</center> <span contenteditable="true" style="display: flex; justify-content: center; border-radius: 0.26667rem; border: 0.04rem solid #F3C300; padding
+                            <center style="font-size: 20px;">Invite Link:</center> <span style="display: flex; justify-content: center; border-radius: 0.26667rem; border: 0.04rem solid #F3C300; padding
                         : 10px 0px;" id='invite_code'></span>
                             <center><button style="
                     display: inline-block;
@@ -115,7 +115,7 @@
                     box-shadow: 0 0.10667rem 0.32rem #8f5206;
                     border-radius: 0.26667rem;
                     color: #fff;
-                " onclick="copy('#invite_code')">Copy</button></center>
+                " id="copy_invite_link" type="button">Copy</button></center>
                         </div>
                     </div>
                 </div>
@@ -252,20 +252,41 @@
             }
 
             function fallbackCopyText(text) {
-                const $temp = $('<textarea readonly></textarea>');
-                $temp.val(text).css({
-                    position: 'fixed',
-                    top: '0',
-                    left: '-9999px',
-                    opacity: '0',
-                });
-                $('body').append($temp);
-                $temp[0].focus();
-                $temp[0].select();
-                $temp[0].setSelectionRange(0, text.length);
+                const temp = document.createElement('textarea');
+                temp.value = text;
+                temp.setAttribute('readonly', '');
+                temp.style.position = 'fixed';
+                temp.style.top = '0';
+                temp.style.left = '0';
+                temp.style.width = '1px';
+                temp.style.height = '1px';
+                temp.style.opacity = '0.01';
+                temp.style.pointerEvents = 'none';
+                temp.style.zIndex = '-1';
+                document.body.appendChild(temp);
+
+                const selection = window.getSelection && window.getSelection();
+                if (selection) {
+                    selection.removeAllRanges();
+                }
+
+                temp.focus();
+                temp.select();
+                temp.setSelectionRange(0, text.length);
                 const copied = document.execCommand('copy');
-                $temp.remove();
+                document.body.removeChild(temp);
+
+                if (selection) {
+                    selection.removeAllRanges();
+                }
+
                 return copied;
+            }
+
+            function setCopyButtonLoading($button) {
+                if ($button && typeof $button.addClass === 'function') {
+                    $button.addClass('block-click');
+                }
             }
 
             async function copyText(text, $button) {
@@ -299,8 +320,13 @@
             $('.btn-box .btn').click(function (e) {
                 e.preventDefault();
                 const $button = $(this);
-                $button.addClass('block-click');
+                setCopyButtonLoading($button);
                 copyText($button.attr('data-clipboard-text'), $button);
+            });
+
+            $('#copy_invite_link').click(function (e) {
+                e.preventDefault();
+                copyText($('#invite_code').text(), null);
             });
         });
     </script>
@@ -350,11 +376,12 @@
                 $('#roses_f').text("Team Commission: " + response.invite.roses_f);
                 $('#roses_all').text(response.invite.roses_all);
                 $('#roses_today').text(response.invite.roses_today);
-                const inviteLink = `${window.location.origin}/register?r_code=${response.info[0].code}`;
+                const inviteCode = String(response.info[0].code || '').trim();
+                const inviteLink = `${window.location.origin}/register?r_code=${encodeURIComponent(inviteCode)}`;
                 $('#invite_code').text(inviteLink);
 
                 RosesRender(response.level);
-                $('.btn-box .btn:eq(0)').attr('data-clipboard-text', response.info[0].code);
+                $('.btn-box .btn:eq(0)').attr('data-clipboard-text', inviteCode);
                 $('.btn-box .btn:eq(1)').attr('data-clipboard-text', inviteLink);
                 var qrcode = new QRCode("qrcode");
                 $('#qrcode').attr('title', inviteLink)
@@ -396,7 +423,7 @@
                         $('.van-list__finished-text').text("No more data");
                         action = 'active';
                     } else {
-                        $('.van-list__finished-text').html('<div data-v-7d40872f="" class="order-content"><div role="feed" class="van-list" aria-busy="true"><div class="van-list__loading"><div class="van-loading van-loading--circular"><span class="van-loading__spinner van-loading__spinner--circular" style="width: 16px; height: 16px;"><svg viewBox="25 25 50 50" class="van-loading__circular"><circle cx="50" cy="50" r="20" fill="none"></circle></svg></span><span class="van-loading__text">Loading...</span></div></div><div class="van-list__placeholder"></div></div></div>');
+                        $('.van-list__finished-text').html('<div data-v-7d40872f="" class="order-content"><div role="feed" class="van-list" aria-busy="true"><div class="van-list__loading"><div class="van-loading van-loading--circular"><span class="van-loading__spinner van-loading--circular" style="width: 16px; height: 16px;"><svg viewBox="25 25 50 50" class="van-loading__circular"><circle cx="50" cy="50" r="20" fill="none"></circle></svg></span><span class="van-loading__text">Loading...</span></div></div><div class="van-list__placeholder"></div></div></div>');
                         action = "inactive";
                     }
                 }

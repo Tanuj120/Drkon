@@ -283,6 +283,26 @@ const randomNumber = (min, max) => {
     return String(Math.floor(Math.random() * (max - min + 1)) + min);
 }
 
+const randomString = (length) => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let index = 0; index < length; index++) {
+        result += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return result;
+}
+
+const generateUniqueReferralCode = async () => {
+    for (let attempts = 0; attempts < 20; attempts++) {
+        const code = randomString(5) + randomNumber(10000, 99999);
+        const [rows] = await connection.query('SELECT id FROM users WHERE code = ? LIMIT 1', [code]);
+        if (!rows || rows.length === 0) {
+            return code;
+        }
+    }
+    throw new Error('Unable to generate invitation code');
+}
+
 const verifyCode = async (req, res) => {
     let auth = req.cookies.auth;
     let now = new Date().getTime();
@@ -1000,6 +1020,14 @@ const promotion = async (req, res) => {
     }
 
     let userInfo = user[0];
+    if (!String(userInfo.code || '').trim()) {
+        userInfo.code = await generateUniqueReferralCode();
+        await connection.execute(
+            'UPDATE users SET code = ? WHERE token = ? AND (code IS NULL OR code = ?)',
+            [userInfo.code, auth, '']
+        );
+        user[0].code = userInfo.code;
+    }
 
     // Directly referred level-1 users
     const [f1Rows] = await connection.query('SELECT `phone`, `code`,`invite`, `time` FROM users WHERE `invite` = ? ', [userInfo.code]);
