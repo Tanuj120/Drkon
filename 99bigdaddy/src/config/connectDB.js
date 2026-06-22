@@ -41,7 +41,6 @@ const dbConfig = {
 };
 
 const _SKIP_DB = (process.env.SKIP_DB || "").toString().trim().toLowerCase();
-console.log("[debug] connectDB SKIP_DB=", _SKIP_DB, "DB_USER=", dbConfig.user);
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const normalizePhone = (value) => String(value || "").replace(/\D/g, "");
