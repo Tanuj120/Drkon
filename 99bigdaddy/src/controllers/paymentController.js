@@ -174,6 +174,8 @@ const addManualUSDTPaymentRequest = async (req, res) => {
         let money = Number((money_usdt * USDT_TO_INR_RATE).toFixed(2));
         let utr = String(data.utr || '').trim();
         const minimumMoneyAllowed = MINIMUM_USD_DEPOSIT_AMOUNT
+        const today = moment().format("YYYY-MM-DD");
+        const createdAt = moment().format("YYYY-MM-DD HH:mm:ss");
 
         if (!money_usdt || !(money_usdt >= minimumMoneyAllowed)) {
             return res.status(400).json({
@@ -213,9 +215,9 @@ const addManualUSDTPaymentRequest = async (req, res) => {
             money: money,
             type: PaymentMethodsMap.USDT_MANUAL,
             status: 0,
-            today: rechargeTable.getCurrentTimeForTodayField(),
+            today: today,
             url: "NULL",
-            time: timeNow,
+            time: createdAt,
         }
 
         const recharge = await rechargeTable.create(newRecharge)

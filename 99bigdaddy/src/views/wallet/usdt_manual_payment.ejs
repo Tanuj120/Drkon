@@ -326,9 +326,14 @@
         submitButton.addEventListener("click", async (event) => {
             try {
                 event.preventDefault();
-                const refNo = document.getElementById("ref_no").value;
+                const refNo = document.getElementById("ref_no").value.trim();
                 const amount = '<%=Amount%>';
-                console.log(amount)
+                if (!refNo) {
+                    alertMessage("Please enter Transaction Hash No.");
+                    return;
+                }
+                submitButton.disabled = true;
+                submitButton.textContent = "Submitting...";
                 const response = await axios.post("/wallet/paynow/manual_usdt_request", {
                     money: amount,
                     utr: refNo,
@@ -349,7 +354,10 @@
                 window.location.href = "/wallet/rechargerecord"
             } catch (error) {
                 console.log(error);
-                alertMessage("Something went Wrong!")
+                alertMessage(error?.response?.data?.message || "Something went Wrong!")
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = "Submit";
             }
         });
     </script>
