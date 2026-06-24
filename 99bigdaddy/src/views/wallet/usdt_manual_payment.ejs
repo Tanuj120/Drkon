@@ -120,20 +120,26 @@
             width: 100%;
             max-width: 440px;
             margin-top: 10px;
-            padding: 0px 13px;
+            padding: 12px 13px;
+            min-height: 52px;
             border-radius: 9px;
             border: 1px solid #ccc;
             font-size: 14px;
             cursor: pointer;
             background: #fff;
-            overflow: hidden;
+            overflow: visible;
+            position: relative;
+            padding-right: 36px;
         }
 
         .upi_display_content p {
             display: flex;
             align-items: center;
+            justify-content: center;
+            flex-direction: column;
             gap: 6px;
             width: 100%;
+            margin: 0;
         }
 
         .upi_display_content p strong {
@@ -146,14 +152,11 @@
             flex: 1 1 auto;
             overflow-wrap: anywhere;
             word-break: break-all;
-            text-align: left;
+            text-align: center;
         }
 
         .upi_display_content__img {
-            width: 15px;
-            height: 15px;
-            cursor: pointer;
-            margin-left: 5px;
+            display: none;
         }
 
         .wallet-address-card {
@@ -174,8 +177,10 @@
         }
 
         .qr-code-frame {
-            width: min(320px, calc(100vw - 80px));
-            aspect-ratio: 1;
+            width: 320px;
+            height: 320px;
+            max-width: calc(100vw - 80px);
+            max-height: calc(100vw - 80px);
             margin-top: 14px;
             background: #fff;
             border-radius: 8px;
@@ -191,6 +196,8 @@
         .qr-code-image {
             width: 100%;
             height: 100%;
+            min-width: 100%;
+            min-height: 100%;
             display: block;
             object-fit: contain;
         }
@@ -294,8 +301,16 @@
             }
 
             .qr-code-frame {
-                width: min(280px, calc(100vw - 64px));
+                width: 280px;
+                height: 280px;
+                max-width: calc(100vw - 64px);
+                max-height: calc(100vw - 64px);
                 padding: 8px;
+            }
+
+            .qr-code-image {
+                width: 100%;
+                height: 100%;
             }
 
             .wallet-address-card,
@@ -329,6 +344,9 @@
                     src="/index_files/qr.jpeg"
                     alt="Bep20 USDT QR Code"
                     class="qr-code-image"
+                    width="300"
+                    height="300"
+                    style="width: 100%; height: 100%; min-width: 100%; min-height: 100%; display: block; object-fit: contain;"
                     onerror="document.getElementById('qr_fallback_text').style.display='block';"
                 >
             </div>
