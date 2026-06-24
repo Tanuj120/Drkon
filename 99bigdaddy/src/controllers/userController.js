@@ -7,7 +7,7 @@ import axios from 'axios';
 let timeNow = Date.now();
 
 const FIXED_DEPOSIT_PLANS = [
-    { days: 90, dailyRate: 2.22 },
+    { days: 90, dailyRate: 1.11 },
 ];
 const COPY_GAMING_AMOUNT_STEP = 500;
 const MINIMUM_DEPOSIT_AMOUNT = 500;

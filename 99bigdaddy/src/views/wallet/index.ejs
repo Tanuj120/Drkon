@@ -424,7 +424,7 @@
                     <div>
                         <div class="metric-value" id="fdGeneratedRevenue">₹0.00</div>
                         <div class="metric-label">Generated revenue</div>
-                        <div class="rate-pill" id="fdRateLabel">My interest rate 2.22</div>
+                        <div class="rate-pill" id="fdRateLabel">My interest rate 1.11</div>
                     </div>
                     <div>
                         <div class="metric-value success" id="fdAccumulatedRevenue">₹0.00</div>
@@ -505,7 +505,7 @@
         }
 
         const defaultCopyGamingPlans = [
-            { days: 90, dailyRate: 2.22 }
+            { days: 90, dailyRate: 1.11 }
         ];
 
         function getCopyGamingPlans(plans) {
@@ -577,7 +577,7 @@
         function renderSummary(summary) {
             latestFixedDepositSummary = summary;
             const activeDeposits = (summary && summary.active) || [];
-            const weightedPlan = activeDeposits.length ? activeDeposits[0] : { dailyRate: 2.22 };
+            const weightedPlan = activeDeposits.length ? activeDeposits[0] : { dailyRate: 1.11 };
             const generatedRevenue = activeDeposits.reduce((total, item) => total + Number(item.earnedInterest || 0), 0);
             const accumulatedRevenue = activeDeposits.reduce((total, item) => total + Number(item.totalInterest || 0), 0);
             const dailyRevenue = activeDeposits.reduce((total, item) => total + ((Number(item.amount || 0) * Number(item.dailyRate || 0)) / 100), 0);
@@ -605,7 +605,7 @@
                     }
                     renderSummary(response.fixedDeposit || {
                         plans: [
-                            { days: 90, dailyRate: 2.22 }
+                            { days: 90, dailyRate: 1.11 }
                         ],
                         active: [],
                         history: [],
