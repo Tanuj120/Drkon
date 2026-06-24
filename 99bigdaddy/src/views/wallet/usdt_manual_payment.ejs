@@ -128,6 +128,33 @@
             margin-left: 5px;
         }
 
+        .wallet-address-card {
+            width: 100%;
+            max-width: 440px;
+            margin-top: 14px;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #d8d8d8;
+            background: #fff;
+            color: #111;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.45;
+            text-align: center;
+            overflow-wrap: anywhere;
+        }
+
+        .qr-code-image {
+            width: 260px;
+            height: 260px;
+            max-width: 100%;
+            margin-top: 14px;
+            object-fit: contain;
+            background: #fff;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
         .verification_form__root {
             display: flex;
             flex-direction: column;
@@ -210,6 +237,9 @@
                         alt="copy upi id" />
                 </p>
             </button>
+            <img src="<%=QRCodeUrl%>" alt="Bep20 USDT QR Code" class="qr-code-image">
+            <div class="wallet-address-card" id="wallet_address_display"><%=UsdtWalletAddress%></div>
+            <a href="<%=QRCodeUrl%>" download="bep20-usdt-qr.png" class="upi_pay_now">Download QR Code</a>
         </div>
 
         <form class="verification_form__root" action="submit.php" method="post">
@@ -286,9 +316,10 @@
         const copyUpiId = document.getElementById("copy_wallet_address_btn");
 
         copyUpiId.addEventListener("click", function () {
-            let upi_id = document.getElementById("wallet_address_field").innerText;
+            let upi_id = document.getElementById("wallet_address_field").innerText.trim();
             console.log(upi_id);
             navigator.clipboard.writeText(upi_id);
+            alertMessage("Wallet address copied");
         });
 
         const submitButton = document.getElementById("submit_button");

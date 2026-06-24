@@ -9,6 +9,7 @@ let timeNow = Date.now();
 const MINIMUM_DEPOSIT_AMOUNT = 500;
 const MINIMUM_USD_DEPOSIT_AMOUNT = 10;
 const USDT_TO_INR_RATE = 98;
+const DEFAULT_USDT_WALLET_ADDRESS = "0xB2e20EB91866CDDEAa588f3cAec76835c442445d";
 
 const PaymentStatusMap = {
     PENDING: 0,
@@ -43,7 +44,7 @@ const initiateManualUPIPayment = async (req, res) => {
         bank_name: bank_recharge_momo_data?.name_bank || "",
         username: bank_recharge_momo_data?.name_user || "",
         upi_id: bank_recharge_momo_data?.stk || "",
-        usdt_wallet_address: bank_recharge_momo_data?.qr_code_image || "",
+        usdt_wallet_address: bank_recharge_momo_data?.qr_code_image || DEFAULT_USDT_WALLET_ADDRESS,
     }
 
     const amount = Number(query?.am);
@@ -85,9 +86,12 @@ const initiateManualUSDTPayment = async (req, res) => {
         return res.redirect("/wallet/recharge");
     }
 
+    const qrCodeUrl = await QRCode.toDataURL(momo.usdt_wallet_address);
+
     return res.render("wallet/usdt_manual_payment.ejs", {
         Amount: amount,
         UsdtWalletAddress: momo.usdt_wallet_address,
+        QRCodeUrl: qrCodeUrl,
     });
 }
 
