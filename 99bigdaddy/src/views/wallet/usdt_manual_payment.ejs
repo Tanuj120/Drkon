@@ -16,6 +16,15 @@
     <style>
         html {
             height: 100%;
+            width: 100%;
+            overflow-x: hidden;
+            box-sizing: border-box;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: inherit;
         }
 
         body {
@@ -25,6 +34,9 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+            width: 100%;
+            overflow-x: hidden;
+            background: #eaf6ff;
         }
 
         main {
@@ -32,9 +44,11 @@
             flex-direction: column;
             gap: 15px;
             height: 100%;
+            width: 100%;
             max-width: 550px;
             margin-left: auto;
             margin-right: auto;
+            overflow-x: hidden;
         }
 
         header {
@@ -43,10 +57,9 @@
             align-items: center;
             background: #f2f2f2;
             padding: 6px;
-            margin-left: auto;
-            margin-right: auto;
             border-radius: 12px;
             margin: 15px 10px;
+            width: calc(100% - 20px);
         }
 
         footer {
@@ -65,10 +78,9 @@
             align-items: center;
             background: #f2f2f2;
             padding: 0px 25px 20px;
-            margin-left: auto;
-            margin-right: auto;
             border-radius: 12px;
             margin: 15px 10px;
+            width: calc(100% - 20px);
         }
 
         .tutorial_content p {
@@ -92,33 +104,49 @@
             align-items: center;
             background: #f2f2f2;
             padding: 0px 25px 20px;
-            margin-left: auto;
-            margin-right: auto;
             border-radius: 12px;
             margin: 15px 10px;
+            width: calc(100% - 20px);
+            overflow: hidden;
         }
 
         .upi_display_root h2 {
             margin: 20px 0px 5px;
             font-weight: 600;
+            text-align: center;
         }
 
         .upi_display_content {
+            width: 100%;
+            max-width: 440px;
             margin-top: 10px;
             padding: 0px 13px;
             border-radius: 9px;
             border: 1px solid #ccc;
             font-size: 14px;
             cursor: pointer;
+            background: #fff;
+            overflow: hidden;
         }
 
         .upi_display_content p {
             display: flex;
+            align-items: center;
             gap: 6px;
+            width: 100%;
         }
 
         .upi_display_content p strong {
+            flex: 0 0 auto;
             white-space: nowrap;
+        }
+
+        #wallet_address_field {
+            min-width: 0;
+            flex: 1 1 auto;
+            overflow-wrap: anywhere;
+            word-break: break-all;
+            text-align: left;
         }
 
         .upi_display_content__img {
@@ -142,12 +170,13 @@
             line-height: 1.45;
             text-align: center;
             overflow-wrap: anywhere;
+            word-break: break-all;
         }
 
         .qr-code-image {
             width: 260px;
             height: 260px;
-            max-width: 100%;
+            max-width: calc(100vw - 80px);
             margin-top: 14px;
             object-fit: contain;
             background: #fff;
@@ -162,10 +191,9 @@
             /* align-items: center; */
             background: #f2f2f2;
             padding: 10px 25px 25px;
-            margin-left: auto;
-            margin-right: auto;
             border-radius: 12px;
             margin: 15px 10px;
+            width: calc(100% - 20px);
         }
 
         .verification_form__root label {
