@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Manual USD</title>
+    <title>Manual Deposit</title>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"
         integrity="sha512-NQfB/bDaB8kaSXF8E77JjhHG5PM6XVRxvHzkZiwl3ddWCEPBa23T76MuWSwAJdMGJnmQqM0VeY9kFszsrBEFrQ=="
@@ -193,11 +193,11 @@
 
     <main>
         <header>
-            <h2>Manual USD</h2>
+            <h2>Manual Deposit</h2>
         </header>
 
         <div class="upi_display_root">
-            <h2 class="upi_display_title">Send $<%=Amount%> USD on</h2>
+            <h2 class="upi_display_title">Send <%=Amount%> USDT on</h2>
             <button class="upi_display_content" id="copy_wallet_address_btn">
                 <p>
                     <strong>Wallet Address: </strong>
@@ -213,8 +213,8 @@
         </div>
 
         <form class="verification_form__root" action="submit.php" method="post">
-            <label for="ref_no">Reference No.</label>
-            <input type="text" id="ref_no" name="ref_no" required placeholder="Enter Your Reference No here..." />
+            <label for="ref_no">Transaction Hash No.</label>
+            <input type="text" id="ref_no" name="ref_no" required placeholder="Enter Transaction Hash no." />
             <button id="submit_button" type="submit">Submit</button>
         </form>
 
@@ -224,14 +224,13 @@
                 <p>
                     <strong>Step 1: </strong>
                     <span>
-                        Open your USD payment app and click on the "Send" option.
+                        Open your Bep20 Usdt Wallet and click on the "Send" option.
                     </span>
                 </p>
                 <p>
                     <strong>Step 2:</strong>
                     <span>
-                        Enter our Wallet address as a receiver and the amount you want to
-                        send.
+                        Enter our Wallet address as a receiver and the amount you want to send.
                     </span>
                 </p>
                 <p>
@@ -243,7 +242,7 @@
                 <p>
                     <strong>Step 4:</strong>
                     <span>
-                        Copy the Reference No. and paste it in our Reference No field
+                        Copy the Transaction Hash No. and paste it in our Transaction Hash field.
                     </span>
                 </p>
                 <p>

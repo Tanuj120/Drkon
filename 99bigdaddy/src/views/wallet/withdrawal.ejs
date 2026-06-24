@@ -235,6 +235,20 @@
             background: 0 0 !important
         }
 
+        .mian .selectBox .withdraw-currency-row[data-v-25d9c352] {
+            margin: .26667rem .53333rem 0;
+            color: #f3c300;
+            font-size: .37333rem;
+            font-weight: 700
+        }
+
+        .mian .selectBox .withdraw-currency-note[data-v-25d9c352] {
+            margin: .16rem .53333rem 0;
+            color: #8aa0b8;
+            font-size: .32rem;
+            line-height: 1.35
+        }
+
         .mian .selectBox .ipnBox[data-v-25d9c352] {
             padding: 0 .53333rem
         }
@@ -7574,20 +7588,25 @@
                         </ul>
                     </div>
                 </div>
-                <div data-v-25d9c352="" class="withdraw-currency-row c-row c-row-between c-row-middle">
-                    <div data-v-25d9c352="" id="withdraw_currency_label">INR</div>
-                    <div data-v-25d9c352="" class="withdraw-currency-chooser" id="withdraw_currency_chooser"
-                        aria-label="Select withdrawal currency">
-                        <div data-v-25d9c352="" class="withdraw-currency-option active" data-currency="INR">INR</div>
-                        <div data-v-25d9c352="" class="withdraw-currency-option" data-currency="USD">USD $</div>
-                    </div>
+                <div data-v-25d9c352="" class="withdraw-currency-row c-row c-row-middle">
+                    <span data-v-25d9c352="">Select amount of USDT</span>
                 </div>
                 <div data-v-25d9c352="" class="number-box c-row">
                     <div data-v-25d9c352="" class="symbol c-row c-row-middle">₹</div>
                     <div data-v-25d9c352="" class="input c-row c-row-middle van-cell van-field">
                         <div class="van-cell__value van-cell__value--alone van-field__value">
-                            <input type="tel" inputmode="numeric" placeholder="Withdrawal Amount" style="color:#f3c300;"
-                                class="van-field__control">
+                            <input type="text" inputmode="decimal" placeholder="Withdrawal Amount in INR" style="color:#f3c300;"
+                                class="van-field__control" id="withdraw_amount_inr_input">
+                        </div>
+                    </div>
+                    <!---->
+                </div>
+                <div data-v-25d9c352="" class="number-box c-row m-t-10">
+                    <div data-v-25d9c352="" class="symbol c-row c-row-middle">$</div>
+                    <div data-v-25d9c352="" class="input c-row c-row-middle van-cell van-field">
+                        <div class="van-cell__value van-cell__value--alone van-field__value">
+                            <input type="text" inputmode="decimal" placeholder="USDT equivalent" style="color:#f3c300;"
+                                class="van-field__control" id="withdraw_amount_usdt_input">
                         </div>
                     </div>
                     <!---->
@@ -7620,7 +7639,8 @@
                 </div>
                 <div data-v-25d9c352="" class="c-row c-row-center m-t-30 p-b-30 withdrawal-btn"><button
                         data-v-25d9c352=""
-                        class="btn van-button van-button--default van-button--normal van-button--block van-button--round">
+                        class="btn van-button van-button--default van-button--normal van-button--block van-button--round"
+                        id="withdraw_submit_button">
                         <div data-v-25d9c352="" class="van-button__content"><span data-v-25d9c352=""
                                 class="van-button__text"> Withdraw Money </span></div>
                     </button></div>
@@ -7735,16 +7755,58 @@
                 sic.removeClass('block-click');
             }, 1000);
         }
-        $('button').click(function (e) {
+
+        const USDT_TO_INR_RATE = 98;
+        const minimumWithdrawInr = 1000;
+        const withdrawInrInput = $('#withdraw_amount_inr_input');
+        const withdrawUsdtInput = $('#withdraw_amount_usdt_input');
+        const withdrawNote = $('#withdraw_currency_note');
+
+        function cleanAmount(value) {
+            return String(value || '').replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+        }
+
+        function formatUsdt(value) {
+            const amount = Number(value || 0);
+            return Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace(/\.?0+$/, '');
+        }
+
+        function formatInr(value) {
+            return String(Math.round(Number(value || 0)));
+        }
+
+        function setWithdrawNote() {
+            withdrawNote.text(`1 USDT = ₹${USDT_TO_INR_RATE}`);
+        }
+
+        withdrawInrInput.on('input', function () {
+            const cleanValue = cleanAmount($(this).val());
+            $(this).val(cleanValue);
+            const inrAmount = Number(cleanValue || 0);
+            withdrawUsdtInput.val(cleanValue ? formatUsdt(inrAmount / USDT_TO_INR_RATE) : '');
+            setWithdrawNote();
+        });
+
+        withdrawUsdtInput.on('input', function () {
+            const cleanValue = cleanAmount($(this).val());
+            $(this).val(cleanValue);
+            const usdtAmount = Number(cleanValue || 0);
+            withdrawInrInput.val(cleanValue ? formatInr(usdtAmount * USDT_TO_INR_RATE) : '');
+            setWithdrawNote();
+        });
+
+        setWithdrawNote();
+
+        $('#withdraw_submit_button').click(function (e) {
             e.preventDefault();
-            let money = $('input:eq(0)').val().trim();
-            let password = $('input:eq(1)').val().trim();
-            if (money && password && money >= 1000) {
+            let money = Number(withdrawInrInput.val().trim());
+            let password = $('.pw-input').val().trim();
+            if (money && password && money >= minimumWithdrawInr) {
                 $.ajax({
                     type: "POST",
                     url: "/api/webapi/withdrawal",
                     data: {
-                        money: money,
+                        money: formatInr(money),
                         password: password,
                     },
                     dataType: "json",

@@ -202,23 +202,31 @@
                                     <div data-v-67caa467="" class="van-image" style="width: 20px; height: 20px;">
                                         <img src="/images/htmls2.png" class="van-image__img">
                                     </div>
-                                    <span data-v-67caa467="" id="currency_label" class="m-l-10">INR</span>
-                                </div>
-                                <div class="currency-chooser" id="currency_chooser" aria-label="Select deposit currency">
-                                    <button type="button" class="currency-option active" data-currency="INR">INR</button>
-                                    <button type="button" class="currency-option" data-currency="USD">USD $</button>
+                                    <span data-v-67caa467="" id="currency_label" class="m-l-10">Select amount of USDT</span>
                                 </div>
                             </div>
                             <!-- Money Amount Field Label -->
 
                             <!-- Money Amount Field Input -->
                             <div data-v-67caa467="" class="box numberSize c-row c-row-between c-row-middle p-l-10">
-                                <div data-v-67caa467="" id="inr_input" class="fuhao amount-currency-symbol">&#8377;</div>
+                                <div data-v-67caa467="" id="inr_input" class="fuhao amount-currency-symbol">$</div>
                                 <div data-v-67caa467="" class="input van-cell van-field">
                                     <div class="van-cell__value van-cell__value--alone van-field__value">
                                         <div class="van-field__body">
-                                            <input type="tel" id="money_amount_input" value="500" inputmode="numeric"
-                                                name="amount" placeholder="Please enter the amount"
+                                            <input type="text" id="money_amount_input" value="10" inputmode="decimal"
+                                                name="amount" placeholder="Enter USDT amount"
+                                                class="van-field__control">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div data-v-67caa467="" class="box numberSize c-row c-row-between c-row-middle p-l-10 m-t-10">
+                                <div data-v-67caa467="" class="fuhao amount-currency-symbol">&#8377;</div>
+                                <div data-v-67caa467="" class="input van-cell van-field">
+                                    <div class="van-cell__value van-cell__value--alone van-field__value">
+                                        <div class="van-field__body">
+                                            <input type="text" id="money_amount_inr_input" value="980" inputmode="decimal"
+                                                name="amount_inr" placeholder="INR equivalent"
                                                 class="van-field__control">
                                         </div>
                                     </div>
@@ -230,26 +238,23 @@
                             <!-- Quick Money Amount Options -->
                             <div id="quick_money_options" data-v-67caa467=""
                                 class="list m-t-10 c-row c-row-between c-flex-warp">
-                                <div data-v-67caa467="" data-money="500" class="li action">
-                                    <span data-v-67caa467="" class="number">500</span>
+                                <div data-v-67caa467="" data-money="10" class="li action">
+                                    <span data-v-67caa467="" class="number">$10</span>
+                                </div>
+                                <div data-v-67caa467="" data-money="50" class="li">
+                                    <span data-v-67caa467="" class="number">$50</span>
+                                </div>
+                                <div data-v-67caa467="" data-money="100" class="li">
+                                    <span data-v-67caa467="" class="number">$100</span>
+                                </div>
+                                <div data-v-67caa467="" data-money="500" class="li">
+                                    <span data-v-67caa467="" class="number">$500</span>
                                 </div>
                                 <div data-v-67caa467="" data-money="1000" class="li">
-                                    <span data-v-67caa467="" class="number">1K</span>
-                                </div>
-                                <div data-v-67caa467="" data-money="2000" class="li">
-                                    <span data-v-67caa467="" class="number">2K</span>
+                                    <span data-v-67caa467="" class="number">$1K</span>
                                 </div>
                                 <div data-v-67caa467="" data-money="5000" class="li">
-                                    <span data-v-67caa467="" class="number">5K</span>
-                                </div>
-                                <div data-v-67caa467="" data-money="10000" class="li">
-                                    <span data-v-67caa467="" class="number">10K</span>
-                                </div>
-                                <div data-v-67caa467="" data-money="100000" class="li">
-                                    <span data-v-67caa467="" class="number">100K</span>
-                                </div>
-                                <div data-v-67caa467="" data-money="1000000" class="li">
-                                    <span data-v-67caa467="" class="number">1M</span>
+                                    <span data-v-67caa467="" class="number">$5K</span>
                                 </div>
                             </div>
                             <!-- Quick Money Amount Options -->
@@ -309,97 +314,31 @@
     <script>
         let MoneyAmountDisplay = document.querySelector("#money_amount_display")
         let ReloadMoneyAmountButton = document.querySelector("#reload_money_amount_button")
-        let PaymentMethodOptions = document.querySelector("#payment_methods_options")
         let MoneyAmountInput = document.querySelector("#money_amount_input")
+        let MoneyAmountInrInput = document.querySelector("#money_amount_inr_input")
         let QuickMoneyOptions = document.querySelector("#quick_money_options")
         let DepositFundButton = document.querySelector("#deposit_fund_btn")
-        let CurrencyChooser = document.querySelector("#currency_chooser")
-        let CurrencyLabel = document.querySelector("#currency_label")
-        let CurrencySymbol = document.querySelector("#inr_input")
         let CurrencyConversionNote = document.querySelector("#currency_conversion_note")
 
-        const USD_TO_INR_RATE = 82
+        const USDT_TO_INR_RATE = 98
+        const MINIMUM_USDT_AMOUNT = 10
+        let inputMoney = MINIMUM_USDT_AMOUNT
 
-        const CurrencyMap = {
-            INR: "INR",
-            USD: "USD",
+        const sanitizeAmount = (value) => String(value || '').replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')
+
+        const formatUsdtAmount = (value) => {
+            const amount = Number(value || 0)
+            return Number.isInteger(amount) ? String(amount) : amount.toFixed(2).replace(/\.?0+$/, '')
         }
 
-        const PaymentMethodsMap = {
-            UPI_GATEWAY: "upi_gateway",
-            WOW_PAY: "wow_pay",
-            MANUAL_PAY: "manual_pay",
-            USDT_MANUAL: "usdt_manual",
-            USDT: "usdt",
-        }
+        const formatInrAmount = (value) => String(Math.round(Number(value || 0)))
 
-        const QuickMoneyForRegular = `
-            <div data-v-67caa467="" data-money="500" class="li action">
-                <span data-v-67caa467="" class="number">500</span>
-            </div>
-            <div data-v-67caa467="" data-money="1000" class="li">
-                <span data-v-67caa467="" class="number">1K</span>
-            </div>
-            <div data-v-67caa467="" data-money="2000" class="li">
-                <span data-v-67caa467="" class="number">2K</span>
-            </div>
-            <div data-v-67caa467="" data-money="5000" class="li">
-                <span data-v-67caa467="" class="number">5K</span>
-            </div>
-            <div data-v-67caa467="" data-money="10000" class="li">
-                <span data-v-67caa467="" class="number">10K</span>
-            </div>
-            <div data-v-67caa467="" data-money="100000" class="li">
-                <span data-v-67caa467="" class="number">100K</span>
-            </div>
-            <div data-v-67caa467="" data-money="1000000" class="li">
-                <span data-v-67caa467="" class="number">1M</span>
-            </div>
-        `
+        const usdtToInr = (amount) => Number(amount || 0) * USDT_TO_INR_RATE
 
-        const QuickMoneyForUSD = `
-            <div data-v-67caa467="" data-money="5" class="li action">
-                <span data-v-67caa467="" class="number">$5</span>
-            </div>
-            <div data-v-67caa467="" data-money="10" class="li">
-                <span data-v-67caa467="" class="number">$10</span>
-            </div>
-            <div data-v-67caa467="" data-money="25" class="li">
-                <span data-v-67caa467="" class="number">$25</span>
-            </div>
-            <div data-v-67caa467="" data-money="50" class="li">
-                <span data-v-67caa467="" class="number">$50</span>
-            </div>
-            <div data-v-67caa467="" data-money="100" class="li">
-                <span data-v-67caa467="" class="number">$100</span>
-            </div>
-            <div data-v-67caa467="" data-money="500" class="li">
-                <span data-v-67caa467="" class="number">$500</span>
-            </div>
-        `
+        const inrToUsdt = (amount) => Number(amount || 0) / USDT_TO_INR_RATE
 
-        let selectedPaymentMethod = ''
-        let inputMoney = 0
-        let selectedCurrency = CurrencyMap.INR
-        const MINIMUM_INR_AMOUNT = 500
-        const MINIMUM_USD_AMOUNT = 5
-
-        const getDefaultAmount = () => selectedCurrency === CurrencyMap.USD ? '5' : '500'
-
-        const getQuickMoneyOptions = () => selectedCurrency === CurrencyMap.USD ? QuickMoneyForUSD : QuickMoneyForRegular
-
-        const getPayableMoneyAmount = (amount) => {
-            const numericAmount = Number(amount)
-            if (!numericAmount || numericAmount <= 0) return 0
-            return selectedCurrency === CurrencyMap.USD ? Math.round(numericAmount * USD_TO_INR_RATE) : numericAmount
-        }
-
-        const updateCurrencyDisplay = () => {
-            const isDollar = selectedCurrency === CurrencyMap.USD
-            CurrencyLabel.textContent = isDollar ? 'USD $' : 'INR'
-            CurrencySymbol.innerHTML = isDollar ? '$' : '&#8377;'
-            MoneyAmountInput.placeholder = isDollar ? 'Please enter amount in dollars' : 'Please enter the amount'
-            CurrencyConversionNote.textContent = ''
+        const updateConversionNote = () => {
+            CurrencyConversionNote.textContent = `1 USDT = ₹${USDT_TO_INR_RATE}`
         }
 
         const bindQuickMoneyOptions = () => {
@@ -408,10 +347,21 @@
             })
         }
 
-        const setDepositAmount = (amount) => {
-            inputMoney = Number(amount)
-            MoneyAmountInput.value = amount
-            updateCurrencyDisplay()
+        const setDepositAmountFromUsdt = (amount) => {
+            const usdtAmount = Number(amount || 0)
+            inputMoney = usdtAmount
+            MoneyAmountInput.value = amount === '' ? '' : formatUsdtAmount(usdtAmount)
+            MoneyAmountInrInput.value = amount === '' ? '' : formatInrAmount(usdtToInr(usdtAmount))
+            updateConversionNote()
+        }
+
+        const setDepositAmountFromInr = (amount) => {
+            const inrAmount = Number(amount || 0)
+            const usdtAmount = inrToUsdt(inrAmount)
+            inputMoney = usdtAmount
+            MoneyAmountInrInput.value = amount === '' ? '' : formatInrAmount(inrAmount)
+            MoneyAmountInput.value = amount === '' ? '' : formatUsdtAmount(usdtAmount)
+            updateConversionNote()
         }
 
         const alertMessage = (text) => {
@@ -457,190 +407,61 @@
 
         }
 
-        const handleCheckAndSelectPaymentMethod = () => {
-            let paymentMethodList = Array.from(PaymentMethodOptions.children)
-
-            paymentMethodList = paymentMethodList.filter((item) => {
-                return !Array.from(item.classList).includes("disabled")
-            })
-
-            let currentPaymentMethod = paymentMethodList.find((item) => {
-                return Array.from(item.classList).includes("action")
-            })
-
-            selectedPaymentMethod = currentPaymentMethod?.getAttribute("type") || PaymentMethodsMap.MANUAL_PAY
-            QuickMoneyOptions.innerHTML = getQuickMoneyOptions()
-            setDepositAmount(getDefaultAmount())
-            bindQuickMoneyOptions()
-        }
-
-        const handleSelectPaymentGateway = (event) => {
-            Array.from(PaymentMethodOptions.children).forEach((child) => {
-                child.classList.remove("action")
-                if (event.currentTarget.getAttribute("type") === child.getAttribute("type")) {
-                    child.classList.add("action")
-                }
-            })
-
-            handleCheckAndSelectPaymentMethod()
-        }
-
-        const handleNumericInput = (event) => {
-            const key = event.keyCode;
-            // Only allow numbers to be entered
-            if (key < 48 || key > 57) {
-                event.preventDefault();
-            }
-        }
-
         const handleMoneyAmountInput = (event) => {
-            inputMoney = Number(MoneyAmountInput.value)
-            updateCurrencyDisplay()
+            const cleanValue = sanitizeAmount(event.target.value)
+            event.target.value = cleanValue
+            setDepositAmountFromUsdt(cleanValue)
+            clearQuickMoneySelection()
+        }
+
+        const handleInrAmountInput = (event) => {
+            const cleanValue = sanitizeAmount(event.target.value)
+            event.target.value = cleanValue
+            setDepositAmountFromInr(cleanValue)
+            clearQuickMoneySelection()
+        }
+
+        const clearQuickMoneySelection = () => {
+            Array.from(QuickMoneyOptions.children).forEach((child) => {
+                child.classList.remove("action")
+            })
         }
 
         const handleQuickMoney = (item) => (event) => {
             const amount = parseInt(item.getAttribute("data-money"))
 
-            setDepositAmount(amount)
+            setDepositAmountFromUsdt(amount)
 
-            Array.from(QuickMoneyOptions.children).forEach((child) => {
-                child.classList.remove("action")
-            })
+            clearQuickMoneySelection()
 
             item.classList.add("action")
         }
 
-        const handleSelectCurrency = (event) => {
-            selectedCurrency = event.currentTarget.getAttribute("data-currency") || CurrencyMap.INR
-
-            Array.from(CurrencyChooser.children).forEach((child) => {
-                child.classList.toggle("active", child.getAttribute("data-currency") === selectedCurrency)
-            })
-
-            QuickMoneyOptions.innerHTML = getQuickMoneyOptions()
-            setDepositAmount(getDefaultAmount())
-            bindQuickMoneyOptions()
-        }
-
         const handleDepositFund = (event) => {
-            const minimumMoneyAllowed = selectedCurrency === CurrencyMap.USD ? MINIMUM_USD_AMOUNT : MINIMUM_INR_AMOUNT
-
-            if (!inputMoney || !(inputMoney >= minimumMoneyAllowed)) {
-                const minimumText = selectedCurrency === CurrencyMap.USD ? `$${minimumMoneyAllowed}` : `INR ${minimumMoneyAllowed}`
-                alertMessage(`Money is required and it should be ${minimumText} or above!`)
+            event.preventDefault()
+            if (!inputMoney || inputMoney < MINIMUM_USDT_AMOUNT) {
+                alertMessage(`Money is required and it should be ${MINIMUM_USDT_AMOUNT} USDT or above!`)
                 return
             }
 
-            if (selectedCurrency === CurrencyMap.USD) {
-                handleManualUSDTPaymentRequest(inputMoney)
-                return
-            }
-
-            switch (selectedPaymentMethod) {
-                case PaymentMethodsMap.UPI_GATEWAY:
-                    handleUPIGatewayPaymentRequest(inputMoney)
-                    break;
-                case PaymentMethodsMap.WOW_PAY:
-                    handleWowPayPaymentRequest(inputMoney)
-                    break;
-                case PaymentMethodsMap.MANUAL_PAY:
-                    handleManualUPIPaymentRequest(inputMoney)
-                    break;
-                case PaymentMethodsMap.USDT_MANUAL:
-                    handleManualUSDTPaymentRequest(inputMoney)
-                    break;
-                case PaymentMethodsMap.USDT:
-                    handleUSDTPaymentRequest(inputMoney)
-                    break;
-            }
-        }
-
-        const handleUPIGatewayPaymentRequest = async (moneyAmount) => {
-            try {
-                const response = await axios.post("/wallet/paynow/upi", {
-                    money: moneyAmount
-                });
-
-                const data = response?.data;
-
-                if (data === undefined || data === null) {
-                    alertMessage("Something went wrong!");
-                    return;
-                }
-
-                if (data?.status === false) {
-                    alertMessage(data?.message);
-                    return;
-                }
-
-                window.location.href = data?.urls?.web_url;
-            } catch (error) {
-                console.error("Payment initiation error:", error);
-                if (error.response && error.response.data && error.response.data.message) {
-                    alertMessage(error.response.data.message);
-                } else {
-                    alertMessage("An unexpected error occurred. Please try again later.");
-                }
-            }
-        };
-
-        const handleWowPayPaymentRequest = async (moneyAmount) => {
-            try {
-                const response = await axios.post(`/wallet/paynow/wowpay?money=${moneyAmount}`)
-
-                const data = response?.data
-
-                if (data === undefined || data === null) {
-                    alertMessage("Something went wrong!")
-                    return
-                }
-
-
-                if (data?.status === false) {
-                    alertMessage(data?.message)
-                    return
-                }
-
-                window.location.href = data?.payment_url
-            } catch (error) {
-                console.log(error)
-            }
+            handleManualUSDTPaymentRequest(formatUsdtAmount(inputMoney))
         }
 
         const handleManualUSDTPaymentRequest = async (moneyAmount) => {
             window.location.href = `/wallet/paynow/manual_usdt?am=${moneyAmount}`
         }
 
-        const handleManualUPIPaymentRequest = async (moneyAmount) => {
-            window.location.href = `/wallet/paynow/manual_upi?am=${moneyAmount}`
-        }
-
-        const handleUSDTPaymentRequest = async (moneyAmount) => {
-
-        }
-
         // Below code will run on Page Load 
         handleSetTotalBalance()
-        handleCheckAndSelectPaymentMethod()
-        handleMoneyAmountInput()
+        setDepositAmountFromUsdt(MINIMUM_USDT_AMOUNT)
+        bindQuickMoneyOptions()
         // --------------------------------
 
         // Even Listeners
         ReloadMoneyAmountButton.addEventListener("click", handleSetTotalBalance)
 
-        Array.from(PaymentMethodOptions.children).forEach((child) => {
-            if (Array.from(child.classList).includes("disabled")) return
-
-            child.addEventListener("click", handleSelectPaymentGateway)
-        })
-
         MoneyAmountInput.addEventListener("input", handleMoneyAmountInput)
-
-        MoneyAmountInput.addEventListener("keypress", handleNumericInput);
-
-        Array.from(CurrencyChooser.children).forEach((child) => {
-            child.addEventListener("click", handleSelectCurrency)
-        })
+        MoneyAmountInrInput.addEventListener("input", handleInrAmountInput)
 
         DepositFundButton.addEventListener("click", handleDepositFund);
 

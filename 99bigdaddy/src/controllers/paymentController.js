@@ -7,7 +7,8 @@ import QRCode from 'qrcode'
 
 let timeNow = Date.now();
 const MINIMUM_DEPOSIT_AMOUNT = 500;
-const MINIMUM_USD_DEPOSIT_AMOUNT = 5;
+const MINIMUM_USD_DEPOSIT_AMOUNT = 10;
+const USDT_TO_INR_RATE = 98;
 
 const PaymentStatusMap = {
     PENDING: 0,
@@ -165,9 +166,9 @@ const addManualUSDTPaymentRequest = async (req, res) => {
     try {
         const data = req.body
         let auth = req.cookies.auth;
-        let money_usdt = parseInt(data.money);
-        let money = money_usdt * 82;
-        let utr = parseInt(data.utr);
+        let money_usdt = parseFloat(data.money);
+        let money = Number((money_usdt * USDT_TO_INR_RATE).toFixed(2));
+        let utr = String(data.utr || '').trim();
         const minimumMoneyAllowed = MINIMUM_USD_DEPOSIT_AMOUNT
 
         if (!money_usdt || !(money_usdt >= minimumMoneyAllowed)) {
@@ -180,7 +181,7 @@ const addManualUSDTPaymentRequest = async (req, res) => {
 
         if (!utr) {
             return res.status(400).json({
-                message: `Ref No. or UTR is Required`,
+                message: `Transaction Hash No. is Required`,
                 status: false,
                 timeStamp: timeNow,
             })
