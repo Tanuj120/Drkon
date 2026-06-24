@@ -89,9 +89,20 @@ const initiateManualUSDTPayment = async (req, res) => {
 
         const usdtWalletAddress = normalizeUsdtWalletAddress(bank_recharge_momo_data?.qr_code_image);
         let qrCodeUrl = DEFAULT_USDT_QR_CODE_URL;
+        let qrCodeSvg = "";
 
         try {
-            qrCodeUrl = await QRCode.toDataURL(usdtWalletAddress);
+            qrCodeUrl = await QRCode.toDataURL(usdtWalletAddress, {
+                errorCorrectionLevel: "M",
+                margin: 1,
+                width: 320,
+            });
+            qrCodeSvg = await QRCode.toString(usdtWalletAddress, {
+                type: "svg",
+                errorCorrectionLevel: "M",
+                margin: 1,
+                width: 320,
+            });
         } catch (error) {
             console.error("Unable to generate USDT QR code:", error);
         }
@@ -100,6 +111,7 @@ const initiateManualUSDTPayment = async (req, res) => {
             Amount: amount,
             UsdtWalletAddress: usdtWalletAddress,
             QRCodeUrl: qrCodeUrl,
+            QRCodeSvg: qrCodeSvg,
         });
     } catch (error) {
         console.error("Unable to initiate manual USDT payment:", error);
