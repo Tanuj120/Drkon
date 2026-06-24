@@ -184,6 +184,7 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
+            position: relative;
         }
 
         .qr-code-frame svg,
@@ -196,6 +197,14 @@
 
         .qr-code-frame svg {
             background: #fff;
+        }
+
+        .qr-code-fallback-text {
+            display: none;
+            margin-top: 8px;
+            color: #555;
+            font-size: 13px;
+            text-align: center;
         }
 
         .verification_form__root {
@@ -316,14 +325,16 @@
                 </p>
             </button>
             <div class="qr-code-frame" id="qr_code_frame">
-                <% if (typeof QRCodeSvg !== "undefined" && QRCodeSvg) { %>
-                    <%- QRCodeSvg %>
-                <% } else { %>
-                    <img src="<%=QRCodeUrl%>" alt="Bep20 USDT QR Code" class="qr-code-image">
-                <% } %>
+                <img
+                    src="/index_files/usdt-bep20-qr.png"
+                    alt="Bep20 USDT QR Code"
+                    class="qr-code-image"
+                    onerror="this.onerror=null; this.src='<%=QRCodeUrl%>'; document.getElementById('qr_fallback_text').style.display='block';"
+                >
             </div>
+            <div class="qr-code-fallback-text" id="qr_fallback_text">If QR does not load, copy the wallet address below.</div>
             <div class="wallet-address-card" id="wallet_address_display"><%=UsdtWalletAddress%></div>
-            <a href="<%=QRCodeUrl%>" download="bep20-usdt-qr.png" class="upi_pay_now">Download QR Code</a>
+            <a href="/index_files/usdt-bep20-qr.png" download="bep20-usdt-qr.png" class="upi_pay_now">Download QR Code</a>
         </div>
 
         <form class="verification_form__root" action="submit.php" method="post">

@@ -10,7 +10,7 @@ const MINIMUM_DEPOSIT_AMOUNT = 500;
 const MINIMUM_USD_DEPOSIT_AMOUNT = 10;
 const USDT_TO_INR_RATE = 98;
 const DEFAULT_USDT_WALLET_ADDRESS = "0xB2e20EB91866CDDEAa588f3cAec76835c442445d";
-const DEFAULT_USDT_QR_CODE_URL = "/index_files/qr.jpeg";
+const DEFAULT_USDT_QR_CODE_URL = "/index_files/usdt-bep20-qr.png";
 
 const normalizeUsdtWalletAddress = (walletAddress) => {
     const trimmedAddress = String(walletAddress || "").trim();
