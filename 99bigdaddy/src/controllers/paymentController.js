@@ -10,7 +10,7 @@ const MINIMUM_DEPOSIT_AMOUNT = 500;
 const MINIMUM_USD_DEPOSIT_AMOUNT = 10;
 const USDT_TO_INR_RATE = 98;
 const DEFAULT_USDT_WALLET_ADDRESS = "0xB2e20EB91866CDDEAa588f3cAec76835c442445d";
-const DEFAULT_USDT_QR_CODE_URL = "/index_files/usdt-bep20-qr.png";
+const DEFAULT_USDT_QR_CODE_URL = "/index_files/qr.jpeg";
 
 const normalizeUsdtWalletAddress = (walletAddress) => {
     const trimmedAddress = String(walletAddress || "").trim();
@@ -88,30 +88,11 @@ const initiateManualUSDTPayment = async (req, res) => {
         }
 
         const usdtWalletAddress = normalizeUsdtWalletAddress(bank_recharge_momo_data?.qr_code_image);
-        let qrCodeUrl = DEFAULT_USDT_QR_CODE_URL;
-        let qrCodeSvg = "";
-
-        try {
-            qrCodeUrl = await QRCode.toDataURL(usdtWalletAddress, {
-                errorCorrectionLevel: "M",
-                margin: 1,
-                width: 320,
-            });
-            qrCodeSvg = await QRCode.toString(usdtWalletAddress, {
-                type: "svg",
-                errorCorrectionLevel: "M",
-                margin: 1,
-                width: 320,
-            });
-        } catch (error) {
-            console.error("Unable to generate USDT QR code:", error);
-        }
 
         return res.render("wallet/usdt_manual_payment.ejs", {
             Amount: amount,
             UsdtWalletAddress: usdtWalletAddress,
-            QRCodeUrl: qrCodeUrl,
-            QRCodeSvg: qrCodeSvg,
+            QRCodeUrl: DEFAULT_USDT_QR_CODE_URL,
         });
     } catch (error) {
         console.error("Unable to initiate manual USDT payment:", error);

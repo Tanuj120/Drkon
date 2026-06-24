@@ -326,15 +326,15 @@
             </button>
             <div class="qr-code-frame" id="qr_code_frame">
                 <img
-                    src="/index_files/usdt-bep20-qr.png"
+                    src="/index_files/qr.jpeg"
                     alt="Bep20 USDT QR Code"
                     class="qr-code-image"
-                    onerror="this.onerror=null; this.src='<%=QRCodeUrl%>'; document.getElementById('qr_fallback_text').style.display='block';"
+                    onerror="document.getElementById('qr_fallback_text').style.display='block';"
                 >
             </div>
             <div class="qr-code-fallback-text" id="qr_fallback_text">If QR does not load, copy the wallet address below.</div>
             <div class="wallet-address-card" id="wallet_address_display"><%=UsdtWalletAddress%></div>
-            <a href="/index_files/usdt-bep20-qr.png" download="bep20-usdt-qr.png" class="upi_pay_now">Download QR Code</a>
+            <a href="/index_files/qr.jpeg" download="bep20-usdt-qr.jpeg" class="upi_pay_now">Download QR Code</a>
         </div>
 
         <form class="verification_form__root" action="submit.php" method="post">
