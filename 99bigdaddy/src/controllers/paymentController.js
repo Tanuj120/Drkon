@@ -95,7 +95,7 @@ const addManualUPIPaymentRequest = async (req, res) => {
         const data = req.body
         let auth = req.cookies.auth;
         let money = parseInt(data.money);
-        let utr = parseInt(data.utr);
+        let utr = String(data.utr || '').trim();
         const minimumMoneyAllowed = MINIMUM_DEPOSIT_AMOUNT
         const timeNow = new Date().toISOString();
 
@@ -107,9 +107,9 @@ const addManualUPIPaymentRequest = async (req, res) => {
             })
         }
 
-        if (!utr && utr?.length != 12) {
+        if (!utr) {
             return res.status(400).json({
-                message: `UPI Ref No. or UTR is Required And it should be 12 digit long`,
+                message: `Transaction Hash No. is Required`,
                 status: false,
                 timeStamp: timeNow,
             })

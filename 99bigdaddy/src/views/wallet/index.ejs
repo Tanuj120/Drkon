@@ -424,7 +424,7 @@
                     <div>
                         <div class="metric-value" id="fdGeneratedRevenue">₹0.00</div>
                         <div class="metric-label">Generated revenue</div>
-                        <div class="rate-pill" id="fdRateLabel">My interest rate 0.50</div>
+                        <div class="rate-pill" id="fdRateLabel">My interest rate 2.22</div>
                     </div>
                     <div>
                         <div class="metric-value success" id="fdAccumulatedRevenue">₹0.00</div>
@@ -488,7 +488,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>
-        let selectedFdPlan = 10;
+        let selectedFdPlan = 90;
         let latestFixedDepositSummary = null;
 
         function formatMoney(value) {
@@ -505,13 +505,13 @@
         }
 
         const defaultCopyGamingPlans = [
-            { days: 10, dailyRate: 0.50 },
-            { days: 30, dailyRate: 1.11 },
             { days: 90, dailyRate: 2.22 }
         ];
 
         function getCopyGamingPlans(plans) {
-            return Array.isArray(plans) && plans.length ? plans : defaultCopyGamingPlans;
+            const availablePlans = Array.isArray(plans) && plans.length ? plans : defaultCopyGamingPlans;
+            const ninetyDayPlans = availablePlans.filter((plan) => Number(plan.days) === 90);
+            return ninetyDayPlans.length ? ninetyDayPlans : defaultCopyGamingPlans;
         }
 
         function renderPlans(plans) {
@@ -577,7 +577,7 @@
         function renderSummary(summary) {
             latestFixedDepositSummary = summary;
             const activeDeposits = (summary && summary.active) || [];
-            const weightedPlan = activeDeposits.length ? activeDeposits[0] : { dailyRate: selectedFdPlan === 10 ? 0.50 : selectedFdPlan === 30 ? 1.11 : 2.22 };
+            const weightedPlan = activeDeposits.length ? activeDeposits[0] : { dailyRate: 2.22 };
             const generatedRevenue = activeDeposits.reduce((total, item) => total + Number(item.earnedInterest || 0), 0);
             const accumulatedRevenue = activeDeposits.reduce((total, item) => total + Number(item.totalInterest || 0), 0);
             const dailyRevenue = activeDeposits.reduce((total, item) => total + ((Number(item.amount || 0) * Number(item.dailyRate || 0)) / 100), 0);
@@ -605,8 +605,6 @@
                     }
                     renderSummary(response.fixedDeposit || {
                         plans: [
-                            { days: 10, dailyRate: 0.50 },
-                            { days: 30, dailyRate: 1.11 },
                             { days: 90, dailyRate: 2.22 }
                         ],
                         active: [],
