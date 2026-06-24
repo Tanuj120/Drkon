@@ -1230,7 +1230,7 @@ const listMyTeam = async (req, res) => {
     const visitedCodes = new Set([userInfo.code].filter(Boolean));
 
     async function fetchUserDataByCode(code, depth = 1) {
-        if (!code || depth > 8 || visitedCodes.has(code)) {
+        if (!code || depth > 15 || visitedCodes.has(code)) {
             return;
         }
         visitedCodes.add(code);
