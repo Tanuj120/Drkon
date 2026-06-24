@@ -10,6 +10,13 @@ const MINIMUM_DEPOSIT_AMOUNT = 500;
 const MINIMUM_USD_DEPOSIT_AMOUNT = 10;
 const USDT_TO_INR_RATE = 98;
 const DEFAULT_USDT_WALLET_ADDRESS = "0xB2e20EB91866CDDEAa588f3cAec76835c442445d";
+const DEFAULT_USDT_QR_CODE_URL = "/index_files/qr.jpeg";
+
+const normalizeUsdtWalletAddress = (walletAddress) => {
+    const trimmedAddress = String(walletAddress || "").trim();
+    const isBep20Address = /^0x[a-fA-F0-9]{40}$/.test(trimmedAddress);
+    return isBep20Address ? trimmedAddress : DEFAULT_USDT_WALLET_ADDRESS;
+}
 
 const PaymentStatusMap = {
     PENDING: 0,
@@ -64,35 +71,40 @@ const initiateManualUPIPayment = async (req, res) => {
 }
 
 const initiateManualUSDTPayment = async (req, res) => {
-    const query = req.query
+    try {
+        const query = req.query
 
-    const [bank_recharge_momo] = await connection.query("SELECT * FROM bank_recharge WHERE type = 'momo'");
+        const [bank_recharge_momo] = await connection.query("SELECT * FROM bank_recharge WHERE type = 'momo'");
 
-    let bank_recharge_momo_data
-    if (bank_recharge_momo.length) {
-        bank_recharge_momo_data = bank_recharge_momo[0]
-    }
+        let bank_recharge_momo_data
+        if (bank_recharge_momo.length) {
+            bank_recharge_momo_data = bank_recharge_momo[0]
+        }
 
-    const momo = {
-        bank_name: bank_recharge_momo_data?.name_bank || "",
-        username: bank_recharge_momo_data?.name_user || "",
-        upi_id: bank_recharge_momo_data?.stk || "",
-        usdt_wallet_address: bank_recharge_momo_data?.qr_code_image || "",
-    }
+        const amount = Number(query?.am);
 
-    const amount = Number(query?.am);
+        if (!amount || amount < MINIMUM_USD_DEPOSIT_AMOUNT) {
+            return res.redirect("/wallet/recharge");
+        }
 
-    if (!amount || amount < MINIMUM_USD_DEPOSIT_AMOUNT) {
+        const usdtWalletAddress = normalizeUsdtWalletAddress(bank_recharge_momo_data?.qr_code_image);
+        let qrCodeUrl = DEFAULT_USDT_QR_CODE_URL;
+
+        try {
+            qrCodeUrl = await QRCode.toDataURL(usdtWalletAddress);
+        } catch (error) {
+            console.error("Unable to generate USDT QR code:", error);
+        }
+
+        return res.render("wallet/usdt_manual_payment.ejs", {
+            Amount: amount,
+            UsdtWalletAddress: usdtWalletAddress,
+            QRCodeUrl: qrCodeUrl,
+        });
+    } catch (error) {
+        console.error("Unable to initiate manual USDT payment:", error);
         return res.redirect("/wallet/recharge");
     }
-
-    const qrCodeUrl = await QRCode.toDataURL(momo.usdt_wallet_address);
-
-    return res.render("wallet/usdt_manual_payment.ejs", {
-        Amount: amount,
-        UsdtWalletAddress: momo.usdt_wallet_address,
-        QRCodeUrl: qrCodeUrl,
-    });
 }
 
 const addManualUPIPaymentRequest = async (req, res) => {
