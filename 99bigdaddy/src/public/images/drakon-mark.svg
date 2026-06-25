@@ -1,14 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 180" role="img" aria-label="Drakon Games icon">
-  <g fill="#050505">
-    <path d="M15 102C39 70 75 53 119 51c-17 9-29 20-37 34 23-15 52-23 86-22-26 8-47 19-64 35 22-6 45-6 69 2-35 6-66 21-91 44-19 17-43 25-72 23 16-7 28-17 37-30-18 1-35-4-47-15 13-2 23-9 15-20Z"/>
-    <path d="M58 68c28-24 64-36 109-34-21 8-37 20-48 35 22-7 45-9 70-5-25 8-47 21-65 40-23 24-51 34-86 29 19-10 33-24 42-42-11 0-19-8-22-23Z"/>
-    <path d="M103 52c22-20 43-28 64-26 11 17 25 31 43 41-34-11-67-9-98 6-2-8-5-15-9-21Z"/>
-    <path d="M135 63c35-10 69-7 102 8-22 3-41 11-56 23-19-12-35-22-46-31Z"/>
-    <path d="M126 101c20-9 43-12 69-8-22 7-39 19-52 36-21 7-43 6-66-2 18-6 34-15 49-26Z"/>
-    <path d="M151 94l48 6-35 14-24-8Z"/>
-    <path d="M164 118l64 19-57 18c-25 8-52 4-75-12 29 3 51-5 68-25Z"/>
-    <path d="M196 106l26 5-18 16-26-7Z"/>
-    <path d="M218 95l25 8-18 10-22-4Z"/>
-    <path d="M186 130l49 10-40 14Z"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Drakon icon">
+  <defs>
+    <linearGradient id="markGold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff7bd"/>
+      <stop offset="0.22" stop-color="#ffe06a"/>
+      <stop offset="0.52" stop-color="#f3af25"/>
+      <stop offset="0.76" stop-color="#c27613"/>
+      <stop offset="1" stop-color="#5a2302"/>
+    </linearGradient>
+    <filter id="markShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="9" stdDeviation="4" flood-color="#000000" flood-opacity="0.9"/>
+      <feDropShadow dx="7" dy="7" stdDeviation="2" flood-color="#381100" flood-opacity="0.9"/>
+    </filter>
+    <style>
+      .letter {
+        font-family: Impact, Haettenschweiler, "Arial Black", "Segoe UI Black", sans-serif;
+        font-size: 205px;
+        font-weight: 900;
+        paint-order: stroke fill;
+      }
+    </style>
+  </defs>
+  <text x="35" y="202" class="letter" fill="url(#markGold)" stroke="#070302" stroke-width="22" filter="url(#markShadow)">D</text>
 </svg>
