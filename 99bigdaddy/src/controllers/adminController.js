@@ -51,6 +51,30 @@ const findRechargeUserForUpdate = async (db, phone) => {
     return { user: suffixRows[0] || null, ambiguous: false };
 }
 
+const addMoneyToUser = async (db, phone, amount) => {
+    let columnNames = new Set(['money']);
+    try {
+        const [columns] = await db.query('SHOW COLUMNS FROM users');
+        columnNames = new Set((columns || []).map((column) => column.Field));
+        columnNames.add('money');
+    } catch (error) {}
+    const assignments = ['money = COALESCE(money, 0) + ?'];
+    const params = [amount];
+
+    if (columnNames.has('total_money')) {
+        assignments.push('total_money = COALESCE(total_money, 0) + ?');
+        params.push(amount);
+    }
+
+    if (columnNames.has('first_deposit')) {
+        assignments.push('first_deposit = ?');
+        params.push(1);
+    }
+
+    params.push(phone);
+    return db.query(`UPDATE users SET ${assignments.join(', ')} WHERE phone = ?`, params);
+}
+
 const adminPage = async (req, res) => {
     return res.render("manage/index.ejs");
 }
@@ -717,37 +741,15 @@ const rechargeDuyet = async (req, res) => {
             const userData = matchedUser.user;
             const userPhone = userData.phone;
             const baseMoney = Number(info[0].money || 0);
-            let creditMoney = baseMoney;
-            const incrementPercentage = Number(userData.first_deposit || 0) === 1 ? 0.05 : 0.15;
-            const freeBonus = Number(userData.free_bonus || 0);
-            const tenPercent = 0.1 * baseMoney;
-            const freeBonusToUse = Math.min(freeBonus, tenPercent);
-
-            creditMoney += baseMoney * incrementPercentage;
-            creditMoney += freeBonusToUse;
-
-            await db.query(
-                'UPDATE users SET money = money + ?, total_money = total_money + ?, first_deposit = ?, free_bonus = GREATEST(COALESCE(free_bonus, 0) - ?, 0) WHERE phone = ?',
-                [creditMoney, creditMoney, 1, freeBonusToUse, userPhone]
-            );
-
-            const invite = userData.invite;
-            let salary = 0;
-            if (baseMoney >= 100 && baseMoney <= 299) {
-                salary = 20;
-            } else if (baseMoney >= 300 && baseMoney <= 999) {
-                salary = 60;
-            } else if (baseMoney >= 1000) {
-                salary = 150;
+            if (!baseMoney || baseMoney <= 0) {
+                await db.rollback();
+                return res.status(200).json({ message: 'Invalid recharge amount', status: false, timeStamp: timeNow });
             }
 
-            if (invite && salary > 0) {
-                const [agent] = await db.query('SELECT phone FROM users WHERE code = ? LIMIT 1', [invite]);
-                if (agent && agent[0] && agent[0].phone && agent[0].phone !== userPhone) {
-                    const salaryType = "Referral Bonus";
-                    await db.execute('INSERT INTO salary (phone, amount, type, time) VALUES (?, ?, ?, ?)', [agent[0].phone, salary, salaryType, formattedTime]);
-                    await db.query('UPDATE users SET money = money + ?, total_money = total_money + ? WHERE phone = ?', [salary, salary, agent[0].phone]);
-                }
+            const creditResult = await addMoneyToUser(db, userPhone, baseMoney);
+            if (!getAffectedRows(creditResult)) {
+                await db.rollback();
+                return res.status(200).json({ message: 'Could not credit user balance', status: false, timeStamp: timeNow });
             }
 
             const statusResult = await db.query(`UPDATE recharge SET status = 1, phone = ? WHERE id = ? AND status = 0`, [userPhone, id]);
@@ -760,13 +762,13 @@ const rechargeDuyet = async (req, res) => {
             return res.status(200).json({
                 message: 'Successful application confirmation',
                 status: true,
-                creditedAmount: creditMoney,
+                creditedAmount: baseMoney,
             });
         } catch (error) {
             try { await db.rollback(); } catch (rollbackError) {}
             console.error('Recharge approval failed:', error);
             return res.status(200).json({
-                message: 'Recharge approval failed. Balance was not changed.',
+                message: error?.message || 'Recharge approval failed. Balance was not changed.',
                 status: false,
                 timeStamp: timeNow,
             });
