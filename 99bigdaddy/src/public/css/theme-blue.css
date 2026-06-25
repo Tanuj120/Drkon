@@ -555,3 +555,33 @@ html[style],
   border: 0 !important;
   color: var(--theme-primary) !important;
 }
+
+.msg,
+.alert-toast .msg,
+[data-v-1dcba851].msg {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.msg .msg-content,
+.alert-toast .msg-content,
+[data-v-1dcba851].msg-content,
+.msg-content[data-v-1dcba851],
+.van-toast,
+.van-toast__text {
+  background: rgba(13, 31, 51, 0.94) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+  box-shadow: 0 8px 24px rgba(13, 31, 51, 0.28) !important;
+}
+
+.msg .msg-content *,
+.alert-toast .msg-content *,
+.van-toast *,
+.van-toast__text * {
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
