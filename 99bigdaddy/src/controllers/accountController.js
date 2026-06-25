@@ -31,7 +31,23 @@ const isNumber = (params) => {
 }
 
 const cleanPhoneNumber = (phone) => String(phone || '').replace(/\D/g, '');
-const normalizeInviteCode = (code) => String(code || '').trim();
+const normalizeInviteCode = (code) => {
+    const value = String(code || '').trim();
+    if (!value) return '';
+
+    try {
+        const parsedUrl = new URL(value, 'https://drakon.local');
+        const urlCode = parsedUrl.searchParams.get('r_code') || parsedUrl.searchParams.get('invite') || parsedUrl.searchParams.get('code');
+        if (urlCode) return String(urlCode).trim();
+    } catch (error) {}
+
+    const queryMatch = value.match(/[?&](?:r_code|invite|code)=([^&\s]+)/i);
+    if (queryMatch) {
+        return decodeURIComponent(queryMatch[1]).trim();
+    }
+
+    return value;
+}
 const tableColumnsCache = new Map();
 
 const isInternationalPhoneNumber = (phone) => {

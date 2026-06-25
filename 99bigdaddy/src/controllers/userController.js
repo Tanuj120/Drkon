@@ -15,6 +15,7 @@ const MINIMUM_WITHDRAW_AMOUNT = 1000;
 const DAY_IN_MS = 86400000;
 const LEVEL_INCOME_PERCENTAGES = [5, 3, 2, 1, 1, 1, 1, 1];
 const LEVEL_INCOME_PACKAGE_DAYS = 90;
+const REFERRAL_MAX_LEVEL = 8;
 
 const formatMoney = (value) => Number(Number(value || 0).toFixed(2));
 
@@ -299,6 +300,99 @@ const generateUniqueReferralCode = async () => {
         }
     }
     throw new Error('Unable to generate invitation code');
+}
+
+const ensureUserReferralCode = async (user, authToken = '') => {
+    if (!user) return '';
+    const currentCode = String(user.code || '').trim();
+    if (currentCode) return currentCode;
+
+    const code = await generateUniqueReferralCode();
+    user.code = code;
+    if (authToken) {
+        await connection.execute(
+            'UPDATE users SET code = ? WHERE token = ? AND (code IS NULL OR code = ?)',
+            [code, authToken, '']
+        );
+    } else if (user.phone) {
+        await connection.execute(
+            'UPDATE users SET code = ? WHERE phone = ? AND (code IS NULL OR code = ?)',
+            [code, user.phone, '']
+        );
+    }
+    return code;
+}
+
+const isSameDay = (timeValue) => {
+    const dateValue = Number(timeValue);
+    const date = Number.isFinite(dateValue) ? new Date(dateValue) : new Date(timeValue);
+    if (Number.isNaN(date.getTime())) return false;
+
+    const now = new Date();
+    return date.getFullYear() === now.getFullYear()
+        && date.getMonth() === now.getMonth()
+        && date.getDate() === now.getDate();
+}
+
+const buildReferralTeam = async (rootUser, maxLevel = REFERRAL_MAX_LEVEL) => {
+    const rootCode = await ensureUserReferralCode(rootUser);
+    const rootPhone = String(rootUser.phone || '');
+    const team = [];
+    const levels = Array.from({ length: maxLevel + 1 }, () => []);
+    const visitedPhones = new Set([rootPhone].filter(Boolean));
+    const visitedCodes = new Set([rootCode].filter(Boolean));
+
+    async function walk(parentCode, level) {
+        if (!parentCode || level > maxLevel) return;
+
+        const [rows] = await connection.query(
+            'SELECT `id_user`, `name_user`, `phone`, `code`, `invite`, `rank`, `status`, `total_money`, `time` FROM users WHERE `invite` = ? ORDER BY id DESC',
+            [parentCode]
+        );
+
+        for (const row of rows || []) {
+            const phone = String(row.phone || '');
+            if (!phone || phone === rootPhone || visitedPhones.has(phone)) continue;
+
+            visitedPhones.add(phone);
+
+            const [turnoverRows] = await connection.query(
+                'SELECT `daily_turn_over`, `total_turn_over` FROM turn_over WHERE `phone` = ? LIMIT 1',
+                [phone]
+            );
+            const [inviteCountRows] = row.code
+                ? await connection.query('SELECT COUNT(*) AS invite_count FROM users WHERE `invite` = ?', [row.code])
+                : [[{ invite_count: 0 }]];
+
+            const teamUser = {
+                ...row,
+                user_level: level,
+                invite_count: Number(inviteCountRows?.[0]?.invite_count || 0),
+                daily_turn_over: Number(turnoverRows?.[0]?.daily_turn_over || 0),
+                total_turn_over: Number(turnoverRows?.[0]?.total_turn_over || 0),
+                total_money: Number(row.total_money || 0),
+            };
+
+            levels[level].push(teamUser);
+            team.push(teamUser);
+
+            const childCode = String(row.code || '').trim();
+            if (childCode && !visitedCodes.has(childCode)) {
+                visitedCodes.add(childCode);
+                await walk(childCode, level + 1);
+            }
+        }
+    }
+
+    await walk(rootCode, 1);
+
+    return {
+        team,
+        levels,
+        direct: levels[1],
+        directToday: levels[1].filter((user) => isSameDay(user.time)).length,
+        totalToday: team.filter((user) => isSameDay(user.time)).length,
+    };
 }
 
 const verifyCode = async (req, res) => {
@@ -1018,128 +1112,9 @@ const promotion = async (req, res) => {
     }
 
     let userInfo = user[0];
-    if (!String(userInfo.code || '').trim()) {
-        userInfo.code = await generateUniqueReferralCode();
-        await connection.execute(
-            'UPDATE users SET code = ? WHERE token = ? AND (code IS NULL OR code = ?)',
-            [userInfo.code, auth, '']
-        );
-        user[0].code = userInfo.code;
-    }
-
-    // Directly referred level-1 users
-    const [f1Rows] = await connection.query('SELECT `phone`, `code`,`invite`, `time` FROM users WHERE `invite` = ? ', [userInfo.code]);
-    const f1s = f1Rows.filter((row) => row.code && row.code !== userInfo.code && row.phone !== userInfo.phone);
-
-    // Directly referred users today
-    let f1_today = 0;
-    for (let i = 0; i < f1s.length; i++) {
-        const f1_time = f1s[i].time;
-        let check = (timerJoin(f1_time) == timerJoin()) ? true : false;
-        if (check) {
-            f1_today += 1;
-        }
-    }
-
-    // All direct referrals today
-    let f_all_today = 0;
-    for (let i = 0; i < f1s.length; i++) {
-        const f1_code = f1s[i].code;
-        const f1_time = f1s[i].time;
-        let check_f1 = (timerJoin(f1_time) == timerJoin()) ? true : false;
-        if (check_f1) f_all_today += 1;
-
-        // Total level-2 referrals today
-        const [f2s] = await connection.query('SELECT `phone`, `code`,`invite`, `time` FROM users WHERE `invite` = ? ', [f1_code]);
-        for (let i = 0; i < f2s.length; i++) {
-            const f2_code = f2s[i].code;
-            const f2_time = f2s[i].time;
-            let check_f2 = (timerJoin(f2_time) == timerJoin()) ? true : false;
-            if (check_f2) f_all_today += 1;
-
-            // Total level-3 referrals today
-            const [f3s] = await connection.query('SELECT `phone`, `code`,`invite`, `time` FROM users WHERE `invite` = ? ', [f2_code]);
-            for (let i = 0; i < f3s.length; i++) {
-                const f3_code = f3s[i].code;
-                const f3_time = f3s[i].time;
-                let check_f3 = (timerJoin(f3_time) == timerJoin()) ? true : false;
-                if (check_f3) f_all_today += 1;
-
-                // Total level-4 referrals today
-                const [f4s] = await connection.query('SELECT `phone`, `code`,`invite`, `time` FROM users WHERE `invite` = ? ', [f3_code]);
-                for (let i = 0; i < f4s.length; i++) {
-                    const f4_code = f4s[i].code;
-                    const f4_time = f4s[i].time;
-                    let check_f4 = (timerJoin(f4_time) == timerJoin()) ? true : false;
-                    if (check_f4) f_all_today += 1;
-                }
-            }
-        }
-    }
-
-    // Total level-2 referrals
-    let f2 = 0;
-    for (let i = 0; i < f1s.length; i++) {
-        const f1_code = f1s[i].code;
-        const [f2s] = await connection.query('SELECT `phone`, `code`,`invite` FROM users WHERE `invite` = ? ', [f1_code]);
-        f2 += f2s.length;
-    }
-
-    // Total level-3 referrals
-    let f3 = 0;
-    for (let i = 0; i < f1s.length; i++) {
-        const f1_code = f1s[i].code;
-        const [f2s] = await connection.query('SELECT `phone`, `code`,`invite` FROM users WHERE `invite` = ? ', [f1_code]);
-        for (let i = 0; i < f2s.length; i++) {
-            const f2_code = f2s[i].code;
-            const [f3s] = await connection.query('SELECT `phone`, `code`,`invite` FROM users WHERE `invite` = ? ', [f2_code]);
-            if (f3s.length > 0) f3 += f3s.length;
-        }
-    }
-
-    // Total level-4 referrals
-    let f4 = 0;
-    for (let i = 0; i < f1s.length; i++) {
-        const f1_code = f1s[i].code;
-        const [f2s] = await connection.query('SELECT `phone`, `code`,`invite` FROM users WHERE `invite` = ? ', [f1_code]);
-        for (let i = 0; i < f2s.length; i++) {
-            const f2_code = f2s[i].code;
-            const [f3s] = await connection.query('SELECT `phone`, `code`,`invite` FROM users WHERE `invite` = ? ', [f2_code]);
-            for (let i = 0; i < f3s.length; i++) {
-                const f3_code = f3s[i].code;
-                const [f4s] = await connection.query('SELECT `phone`, `code`,`invite` FROM users WHERE `invite` = ? ', [f3_code]);
-                if (f4s.length > 0) f4 += f4s.length;
-            }
-        }
-    }
-
-    let selectedData = [];
-    const visitedCodes = new Set([userInfo.code].filter(Boolean));
-
-    async function fetchInvitesByCode(code, depth = 1) {
-        if (!code || depth > 8 || visitedCodes.has(code)) {
-            return;
-        }
-        visitedCodes.add(code);
-
-        const [inviteData] = await connection.query('SELECT `id_user`,`name_user`,`phone`, `code`, `invite`, `rank`, `user_level`, `total_money` FROM users WHERE `invite` = ?', [code]);
-
-        if (inviteData.length > 0) {
-            for (const invite of inviteData) {
-                if (!invite.code || visitedCodes.has(invite.code) || invite.phone === userInfo.phone) continue;
-                selectedData.push(invite);
-                await fetchInvitesByCode(invite.code, depth + 1);
-            }
-        }
-    }
-
-    if (f1s.length > 0) {
-        for (const initialInfoF1 of f1s) {
-            if (!initialInfoF1.code || visitedCodes.has(initialInfoF1.code)) continue;
-            selectedData.push(initialInfoF1);
-            await fetchInvitesByCode(initialInfoF1.code);
-        }
-    }
+    await ensureUserReferralCode(userInfo, auth);
+    user[0].code = userInfo.code;
+    const referralTeam = await buildReferralTeam(userInfo, REFERRAL_MAX_LEVEL);
 
     const rosesF1 = parseFloat(userInfo.roses_f);
     const rosesAll = parseFloat(userInfo.roses_f1);
@@ -1151,14 +1126,15 @@ const promotion = async (req, res) => {
         info: user,
         status: true,
         invite: {
-            f1: f1s.length,
-            total_f: selectedData.length,
-            f1_today: f1_today,
-            f_all_today: f_all_today,
+            f1: referralTeam.direct.length,
+            total_f: referralTeam.team.length,
+            f1_today: referralTeam.directToday,
+            f_all_today: referralTeam.totalToday,
             roses_f1: userInfo.roses_f1,
             roses_f: userInfo.roses_f,
             roses_all: rosesAdd,
             roses_today: userInfo.roses_today,
+            max_level: REFERRAL_MAX_LEVEL,
         },
         timeStamp: timeNow,
     });
@@ -1220,49 +1196,18 @@ const listMyTeam = async (req, res) => {
         });
     };
     let userInfo = user[0];
-    const [f1] = await connection.query('SELECT `id_user`, `phone`, `code`, `invite`,`roses_f`, `rank`, `name_user`,`status`,`total_money`, `time` FROM users WHERE `invite` = ? ORDER BY id DESC', [userInfo.code]);
-    const [mem] = await connection.query('SELECT `id_user`, `phone`, `time` FROM users WHERE `invite` = ? ORDER BY id DESC LIMIT 100', [userInfo.code]);
+    await ensureUserReferralCode(userInfo, auth);
+    user[0].code = userInfo.code;
+    const referralTeam = await buildReferralTeam(userInfo, REFERRAL_MAX_LEVEL);
+    const f1 = referralTeam.direct;
+    const mem = referralTeam.direct.slice(0, 100);
     const [total_roses] = await connection.query('SELECT `f1`,`invite`, `code`,`phone`,`time` FROM roses WHERE `invite` = ? ORDER BY id DESC LIMIT 100', [userInfo.code]);
-
-    const selectedData = [];
-    const visitedCodes = new Set([userInfo.code].filter(Boolean));
-
-    async function fetchUserDataByCode(code, depth = 1) {
-        if (!code || depth > 15 || visitedCodes.has(code)) {
-            return;
-        }
-        visitedCodes.add(code);
-
-        const [userData] = await connection.query('SELECT `id_user`, `name_user`, `phone`, `code`, `invite`, `rank`, `total_money` FROM users WHERE `invite` = ?', [code]);
-        if (userData.length > 0) {
-            for (const user of userData) {
-                if (!user.code || visitedCodes.has(user.code) || user.phone === userInfo.phone) continue;
-                const [turnoverData] = await connection.query('SELECT `phone`, `daily_turn_over`, `total_turn_over` FROM turn_over WHERE `phone` = ?', [user.phone]);
-                const [inviteCountData] = await connection.query('SELECT COUNT(*) as invite_count FROM users WHERE `invite` = ?', [user.code]);
-                const inviteCount = inviteCountData[0].invite_count;
-
-                const userObject = {
-                    ...user,
-                    invite_count: inviteCount,
-                    user_level: depth,
-                    daily_turn_over: turnoverData[0]?.daily_turn_over || 0,
-                    total_turn_over: turnoverData[0]?.total_turn_over || 0,
-                };
-
-                selectedData.push(userObject);
-                await fetchUserDataByCode(user.code, depth + 1);
-            }
-        }
-    }
-
-    await fetchUserDataByCode(userInfo.code);
-
 
     let newMem = [];
     mem.map((data) => {
         let objectMem = {
             id_user: data.id_user,
-            phone: '91' + data.phone.slice(0, 1) + '****' + String(data.phone.slice(-4)),
+            phone: data.phone,
             time: data.time,
         };
 
@@ -1270,10 +1215,14 @@ const listMyTeam = async (req, res) => {
     });
     return res.status(200).json({
         message: 'Receive success',
-        f1: selectedData,
+        f1: referralTeam.team,
         f1_direct: f1,
         mem: newMem,
         total_roses: total_roses,
+        levels: referralTeam.levels.slice(1),
+        max_level: REFERRAL_MAX_LEVEL,
+        myTurnOver: 0,
+        myTunrOver: 0,
         status: true,
         timeStamp: timeNow,
     });

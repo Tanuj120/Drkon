@@ -240,13 +240,6 @@
                                 <option value="6">Level 6</option>
                                 <option value="7">Level 7</option>
                                 <option value="8">Level 8</option>
-                                <option value="9">Level 9</option>
-                                <option value="10">Level 10</option>
-                                <option value="11">Level 11</option>
-                                <option value="12">Level 12</option>
-                                <option value="13">Level 13</option>
-                                <option value="14">Level 14</option>
-                                <option value="15">Level 15</option>
                             </select>
                         </div>
 
@@ -332,7 +325,29 @@
                 $('.nav .van-tabbar-item:eq(0) img').attr('src', '/images/home1.png');
                 $('.nav .van-tabbar-item:eq(0) .name').removeClass('action');
                 $('.nav .van-tabbar-item:eq(2) .name').addClass('action');
+
+                let teamData = [];
+
+                function renderNoMembers() {
+                    $('#van-list').html(`
+                        <div data-v-0ff6946a="" class="item">
+                            <div data-v-0ff6946a="" class="bd van-row">
+                                <div data-v-0ff6946a="" class="c-tc van-col van-col--24">No members found</div>
+                            </div>
+                        </div>
+                    `);
+                }
+
+                function getSubordinateText(data) {
+                    const count = Number(data.invite_count || 0);
+                    return count > 0 ? `${count} Subordinate${count > 1 ? 's' : ''}` : 'No Subordinates';
+                }
+
                 function MemRender(datas) {
+                    if (!Array.isArray(datas) || datas.length === 0) {
+                        renderNoMembers();
+                        return;
+                    }
                     let html = '';
                     datas.map((data) => {
                         html += `
@@ -340,11 +355,11 @@
                             <div data-v-0ff6946a="" class="bd van-row">
                                 <div data-v-0ff6946a="" class="c-tc van-col van-col--5">${data.id_user}</div>
                                 <div data-v-0ff6946a="" class="c-tc van-ellipsis van-col van-col--6">${data.name_user}</div>
-                                <div data-v-0ff6946a="" class="c-tc red van-col van-col--4">${data.total_turn_over}</div>
+                                <div data-v-0ff6946a="" class="c-tc red van-col van-col--4">${Number(data.total_turn_over || 0)}</div>
                                 <!--<div data-v-0ff6946a="" class="c-tc van-col van-col--4">
                                     <span data-v-0ff6946a="">${(data.status == 1) ? 'Open' : 'Close'}</span>
                                 </div> -->
-                                <div data-v-0ff6946a="" class="c-tc red van-col van-col--4">${data.user_level}</div>
+                                <div data-v-0ff6946a="" class="c-tc red van-col van-col--4">Level ${data.user_level}</div>
                                 <div data-v-0ff6946a="" class="c-tc van-col van-col--4">
                                     <span data-v-0ff6946a="" class="details-button">Details</span>
                                     <span data-v-0ff6946a="" class="details-arrow" style="display: none;">▼</span>
@@ -352,11 +367,11 @@
                             </div>
                             <div data-v-0ff6946a="" class="bdshow" style="display: none;">
                                 <div data-v-0ff6946a="" class="c-row c-row-between">
-                                    <div data-v-0ff6946a="">Personal flow: ${data.daily_turn_over}</div>
-                                    <div data-v-0ff6946a="">Personal Recharge:${data.total_money}</div>
+                                    <div data-v-0ff6946a="">Personal flow: ${Number(data.daily_turn_over || 0)}</div>
+                                    <div data-v-0ff6946a="">Personal Recharge: ${Number(data.total_money || 0)}</div>
                                 </div>
                                 <div data-v-0ff6946a="">Registration time: ${timerJoin(data.time)}</div>
-                               <div data-v-0ff6946a="" id="subordinateList">Subordinate: ${Array.isArray(data.invite_count) ? data.invite_count.map(item => `<li>${item}</li>`).join('') : 'No Subordinates'}</div>
+                               <div data-v-0ff6946a="">Subordinate: ${getSubordinateText(data)}</div>
                             </div>
                         </div>
                         `;
@@ -375,26 +390,24 @@
                     url: "/api/webapi/myTeam",
                     dataType: "json",
                     success: function (response) {
-                        console.log('user name is :' + response.f1);
-                        const f1Copy = [...response.f1];
-                        f1Copy.splice(0, 4);
-                        const f1Data = response.f1.map(item => {
+                        const f1Data = (Array.isArray(response.f1) ? response.f1 : []).map(item => {
                             item.daily_turn_over = item.daily_turn_over || 0;
-                            item.invite_count = Array.isArray(item.invite_count) ? item.invite_count.join(', ') : '';
+                            item.invite_count = Number(item.invite_count || 0);
                             item.total_turn_over = item.total_turn_over || 0;
-                            console.log(item.invite_count);
                             return item;
                         });
+                        teamData = f1Data;
                         const totalTurnover = f1Data.reduce((total, item) => {
                             const turnover = parseFloat(item.total_turn_over);
                             return isNaN(turnover) ? total : total + turnover;
                         }, 0);
 
-                        const totalMoneySum = response.f1.reduce((total, user) => {
+                        const totalMoneySum = f1Data.reduce((total, user) => {
                             const money = parseFloat(user.total_money) || 0;
                             return total + money;
                         }, 0);
-                        $('#total-mem').text(`Total Recharge: ${totalMoneySum} | Total Turnover: ${parseFloat(totalTurnover) + parseFloat(response.myTunrOver)}`);
+                        const myTurnOver = Number(response.myTurnOver || response.myTunrOver || 0);
+                        $('#total-mem').text(`Team(${f1Data.length} People) | Total Recharge: ${totalMoneySum} | Total Turnover: ${totalTurnover + myTurnOver}`);
                         MemRender(f1Data);
                     }
                 });
@@ -402,6 +415,15 @@
             <script>
 
                 function filterData(uid, level) {
+                    const filteredData = teamData.filter(item => {
+                        const uidMatch = uid === "" || String(item.id_user || '').includes(uid);
+                        const levelMatch = level === "" || Number(item.user_level) === Number(level);
+
+                        return uidMatch && levelMatch;
+                    });
+                    MemRender(filteredData);
+                    return;
+
                     $.ajax({
                         type: "GET",
                         url: "/api/webapi/myTeam",
