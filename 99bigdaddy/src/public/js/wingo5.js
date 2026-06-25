@@ -153,25 +153,38 @@ socket.on("data-server", function (msg) {
             $(".time-box .info .number").text(response.period);
             $(".game-list .con-box:eq(0) .page-nav .number").text("1/" + getGamePage(response));
 
-            // Assuming firstGame is defined somewhere in your code
-            if (firstGame && firstGame.stage === list_orders[0].period) {
+            const latestSettledPeriod = list_orders[0] && list_orders[0].period;
+            const settledGame = data.find((item) => String(item.stage) === String(latestSettledPeriod) && Number(item.status) !== 0);
+            if (settledGame) firstGame = settledGame;
+
+            if (firstGame && list_orders.length && String(firstGame.stage) === String(latestSettledPeriod) && Number(firstGame.status) !== 0) {
+              const resultKey = `${firstGame.id_product || firstGame.stage}-${firstGame.status}-${firstGame.get}`;
+              if (window.lastShownWingoResult === resultKey) {
+                showListOrder(list_orders, 0);
+                showListOrder_t(list_orders, 2);
+                return;
+              }
+              window.lastShownWingoResult = resultKey;
               var modal = document.getElementById("myModal");
               modal.style.display = "block";
               var myModalheader = document.getElementById("myModal_header");
               var myModal_result = document.getElementById("myModal_result");
               var lottery_result = document.getElementById("lottery_result");
               var myModal_result_Period = document.getElementById("myModal_result_Period");
-               if (firstGame.get == 0) {
+              const gameStatus = Number(firstGame.status);
+              const gameGet = Number(firstGame.get) || 0;
+              const gameMoney = Number(firstGame.money) || 0;
+              if (gameStatus === 2 || gameGet <= 0) {
                 myModalheader.style.color = "red";
                 myModalheader.style.fontSize = "28px";
                 myModalheader.style.fontWeight = "bold";
                 myModalheader.innerHTML = "Sorry !";
-                myModal_result.innerHTML = "LOSS :" + firstGame.money;
+                myModal_result.innerHTML = "LOSS :" + gameMoney.toFixed(2);
               } else {
                 myModalheader.style.color = "#20d90a";
                 myModalheader.style.fontSize = "28px";
                 myModalheader.innerHTML = "Congratulation 🥇";
-                myModal_result.innerHTML = "WIN :" + firstGame.get.toFixed(2);
+                myModal_result.innerHTML = "WIN :" + gameGet.toFixed(2);
               }
               let idProductStr = firstGame.id_product.toString();
               let stageStr = firstGame.stage.toString();

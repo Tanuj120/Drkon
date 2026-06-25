@@ -548,28 +548,6 @@ const GetMyEmerdList = async (req, res) => {
     const [minutes_1] = await connection.query(`SELECT * FROM minutes_1 WHERE phone = ? AND game = ? ORDER BY id DESC LIMIT ?, ?`, [user[0].phone, game, Number(pageno), Number(pageto)]);
     const [minutes_1All] = await connection.query(`SELECT * FROM minutes_1 WHERE phone = ? AND game = ? ORDER BY id DESC`, [user[0].phone, game]);
 
-    let total_money = 0;
-    try {
-        if (minutes_1.length > 0 && minutes_1[0].stage !== undefined) {
-            const [get_money] = await connection.query('SELECT `get` FROM minutes_1 WHERE stage = ? AND phone = ?', [minutes_1[0].stage, user[0].phone]);
-
-            // Log the result set size
-            console.log(`Number of rows returned: ${get_money.length}`);
-
-            // Calculate total_money
-            get_money.forEach((data) => {
-                total_money += data.get;
-            });
-
-            // Log the total_money calculated
-            console.log(`Total money: ${total_money}`);
-        } else {
-            console.log('minutes_1 is empty or stage is undefined');
-        }
-    } catch (error) {
-        console.log('Error in executing the query', error);
-    }
-
     if (!minutes_1[0]) {
         return res.status(200).json({
             code: 0,
@@ -593,7 +571,7 @@ const GetMyEmerdList = async (req, res) => {
 
     let datas = minutes_1.map((data) => {
         let { id, phone, code, invite, level, game, get, ...others } = data;
-        return { ...others, get: total_money };
+        return { ...others, get: Number(get) || 0 };
     });
 
     return res.status(200).json({
