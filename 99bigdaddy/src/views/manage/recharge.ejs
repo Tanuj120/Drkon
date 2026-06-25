@@ -120,7 +120,6 @@
       usdt: "USDT",
     }
     function show(params) {
-      let send_id;
       if (params.length == 0) {
         $('tbody').html(`
             <tr class="text-center">
@@ -131,7 +130,6 @@
       }
       let html = '';
       let show = params.map((data) => {
-        send_id = data.id;
         html += `<tr class="text-center">
                   <td id="${data.id}">
                     ${data.id}
@@ -173,8 +171,7 @@
       $('tbody').html(html);
       $('.btn-success').click(function (e) {
         e.preventDefault();
-        // let id = $(this).attr('data-id');
-        let id = send_id;
+        let id = $(this).attr('data');
         Swal.fire({
           title: 'Are you sure want to accept?',
           // text: "Do you want to confirm this recharge?",
@@ -205,8 +202,7 @@
 
       $('.btn-danger').click(function (e) {
         e.preventDefault();
-        // let id = $(this).attr('data-id');
-        let id = send_id;
+        let id = $(this).attr('data');
         Swal.fire({
           title: 'Are you sure want to Reject?',
           // text: "Do you want to reject this recharge?",

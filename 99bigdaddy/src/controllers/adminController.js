@@ -8,6 +8,18 @@ const isLocalBypass = (process.env.SKIP_DB || '').toString().trim().toLowerCase(
 
 let timeNow = Date.now();
 
+const getDbClient = async () => {
+    if (typeof connection.getConnection === 'function') {
+        return connection.getConnection();
+    }
+    return connection;
+}
+
+const getAffectedRows = (result) => {
+    const payload = Array.isArray(result) ? result[0] : result;
+    return Number(payload?.affectedRows || 0);
+}
+
 const adminPage = async (req, res) => {
     return res.render("manage/index.ejs");
 }
@@ -643,64 +655,94 @@ const rechargeDuyet = async (req, res) => {
         });
     }
     if (type == 'confirm') {
-        await connection.query(`UPDATE recharge SET status = 1 WHERE id = ?`, [id]);
-        const [info] = await connection.query(`SELECT * FROM recharge WHERE id = ?`, [id]);
+        const db = await getDbClient();
+        try {
+            await db.beginTransaction();
+            const [info] = await db.query(`SELECT * FROM recharge WHERE id = ? FOR UPDATE`, [id]);
+            if (!info || !info[0]) {
+                await db.rollback();
+                return res.status(200).json({ message: 'Recharge not found', status: false, timeStamp: timeNow });
+            }
+            if (Number(info[0].status) === 1) {
+                await db.rollback();
+                return res.status(200).json({ message: 'Recharge already confirmed', status: true, timeStamp: timeNow });
+            }
+            if (Number(info[0].status) !== 0) {
+                await db.rollback();
+                return res.status(200).json({ message: 'Recharge is already closed', status: false, timeStamp: timeNow });
+            }
 
-        let money = info[0].money;
+            const [data_set] = await db.query('SELECT * FROM users WHERE phone = ? FOR UPDATE', [info[0].phone]);
+            if (!data_set || !data_set[0]) {
+                await db.rollback();
+                return res.status(200).json({ message: 'User not found for this recharge', status: false, timeStamp: timeNow });
+            }
 
-        const [data_set] = await connection.query('SELECT * FROM users WHERE phone = ?', [info[0].phone]);
-        const existsInRecharge = data_set[0].first_deposit;
+            const userData = data_set[0];
+            const baseMoney = Number(info[0].money || 0);
+            let creditMoney = baseMoney;
+            const incrementPercentage = Number(userData.first_deposit || 0) === 1 ? 0.05 : 0.15;
+            const freeBonus = Number(userData.free_bonus || 0);
+            const tenPercent = 0.1 * baseMoney;
+            const freeBonusToUse = Math.min(freeBonus, tenPercent);
 
-        // const [[{ invite }]] = await connection.query('SELECT invite FROM users WHERE phone = ?', [info[0].phone]);
-        const invite = data_set[0].invite;
+            creditMoney += baseMoney * incrementPercentage;
+            creditMoney += freeBonusToUse;
 
-        let salary = 0;
-        if (money >= 100 && money <= 299) {
-            salary = 20;
-        } else if (money >= 300 && money <= 999) {
-            salary = 60;
-        } else if (money >= 1000) {
-            salary = 150;
+            await db.query(
+                'UPDATE users SET money = money + ?, total_money = total_money + ?, first_deposit = ?, free_bonus = GREATEST(COALESCE(free_bonus, 0) - ?, 0) WHERE phone = ?',
+                [creditMoney, creditMoney, 1, freeBonusToUse, info[0].phone]
+            );
+
+            const invite = userData.invite;
+            let salary = 0;
+            if (baseMoney >= 100 && baseMoney <= 299) {
+                salary = 20;
+            } else if (baseMoney >= 300 && baseMoney <= 999) {
+                salary = 60;
+            } else if (baseMoney >= 1000) {
+                salary = 150;
+            }
+
+            if (invite && salary > 0) {
+                const [agent] = await db.query('SELECT phone FROM users WHERE code = ? LIMIT 1', [invite]);
+                if (agent && agent[0] && agent[0].phone && agent[0].phone !== info[0].phone) {
+                    const salaryType = "Referral Bonus";
+                    await db.execute('INSERT INTO salary (phone, amount, type, time) VALUES (?, ?, ?, ?)', [agent[0].phone, salary, salaryType, formattedTime]);
+                    await db.query('UPDATE users SET money = money + ?, total_money = total_money + ? WHERE phone = ?', [salary, salary, agent[0].phone]);
+                }
+            }
+
+            const statusResult = await db.query(`UPDATE recharge SET status = 1 WHERE id = ? AND status = 0`, [id]);
+            if (!getAffectedRows(statusResult)) {
+                await db.rollback();
+                return res.status(200).json({ message: 'Recharge was already processed', status: false, timeStamp: timeNow });
+            }
+
+            await db.commit();
+            return res.status(200).json({
+                message: 'Successful application confirmation',
+                status: true,
+                creditedAmount: creditMoney,
+            });
+        } catch (error) {
+            try { await db.rollback(); } catch (rollbackError) {}
+            console.error('Recharge approval failed:', error);
+            return res.status(200).json({
+                message: 'Recharge approval failed. Balance was not changed.',
+                status: false,
+                timeStamp: timeNow,
+            });
+        } finally {
+            if (typeof db.release === 'function') db.release();
         }
-
-        const [agent] = await connection.query('SELECT * FROM users WHERE code = ?', [invite]);
-
-        const incrementPercentage = existsInRecharge == 1 ? 0.05 : 0.15;
-        await connection.query('UPDATE users SET first_deposit = ? WHERE phone = ?', [1, info[0].phone]);
-
-        const tenPercent = 0.1 * money;
-        money += (money * incrementPercentage);
-
-        const free_bonus = data_set[0].free_bonus;
-        // const [[{ free_bonus }]] = await connection.query('SELECT free_bonus FROM users WHERE phone = ?', [info[0].phone]);
-
-        if (free_bonus >= tenPercent) {
-            money += tenPercent;
-            await connection.query('UPDATE users SET free_bonus = free_bonus - ? WHERE phone = ?', [tenPercent, info[0].phone]);
-        } else {
-            money += free_bonus;
-            await connection.query('UPDATE users SET free_bonus = ? WHERE phone = ?', [0, info[0].phone]);
-        }
-
-        const type = "Referral Bonus";
-        const insertSalaryQuery = 'INSERT INTO salary (phone, amount, type, time) VALUES (?, ?, ?, ?)';
-        await connection.execute(insertSalaryQuery, [agent[0].phone, salary, type, formattedTime]);
-
-        await connection.query('UPDATE users SET money = money + ?, total_money = total_money + ? WHERE phone = ?', [salary, salary, agent[0].phone]);
-        await connection.query('UPDATE users SET money = money + ?, total_money = total_money + ? WHERE phone = ? ', [money, money, info[0].phone]);
-        return res.status(200).json({
-            message: 'Successful application confirmation',
-            status: true,
-            datas: recharge,
-        });
     }
     if (type == 'delete') {
-        await connection.query(`UPDATE recharge SET status = 2 WHERE id = ?`, [id]);
+        const result = await connection.query(`UPDATE recharge SET status = 2 WHERE id = ? AND status = 0`, [id]);
 
         return res.status(200).json({
-            message: 'Cancellation successful',
-            status: true,
-            datas: recharge,
+            message: getAffectedRows(result) ? 'Cancellation successful' : 'Recharge was already processed',
+            status: getAffectedRows(result) > 0,
         });
     }
 }

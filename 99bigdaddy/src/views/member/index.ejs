@@ -347,7 +347,7 @@
                 $('.infoName .name').text(data.data.name_user);
                 $('.infoName .id').text(`UID:${data.data.id_user}`);
                 $('.infoName .id').attr('data-clipboard-text', '');
-                $('.infoName .number').text(`Mobile Number: +91 ${data.data.phone_user.slice(0, 2)}****${data.data.phone_user.slice(-4)}`);
+                $('.infoName .number').text(`Mobile Number: ${maskPhoneNumber(data.data.phone_user)}`);
                 setAccountBalance(data.data.money_user);
                 setTimeout(() => setAccountBalance(data.data.money_user), 0);
                 $('.money .txt').text(` ₹ ${data.data.money_user} `);

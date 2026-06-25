@@ -574,7 +574,7 @@
             $('#fdHistory').html(html);
         }
 
-        function renderSummary(summary) {
+        function renderSummary(summary, walletBalance) {
             latestFixedDepositSummary = summary;
             const activeDeposits = (summary && summary.active) || [];
             const weightedPlan = activeDeposits.length ? activeDeposits[0] : { dailyRate: 1.11 };
@@ -582,7 +582,7 @@
             const accumulatedRevenue = activeDeposits.reduce((total, item) => total + Number(item.totalInterest || 0), 0);
             const dailyRevenue = activeDeposits.reduce((total, item) => total + ((Number(item.amount || 0) * Number(item.dailyRate || 0)) / 100), 0);
 
-            $('#fdLockedAmount').text(formatMoney(summary ? summary.lockedAmount : 0));
+            $('#fdLockedAmount').text(formatMoney(walletBalance));
             $('#fdDailyRevenue').text(formatMoney(dailyRevenue));
             $('#fdGeneratedRevenue').text(formatMoney(generatedRevenue));
             $('#fdAccumulatedRevenue').text(formatMoney(accumulatedRevenue));
@@ -613,7 +613,7 @@
                         projectedInterest: 0,
                         projectedMaturityAmount: 0,
                         withdrawableAmount: 0
-                    });
+                    }, response.data ? response.data.money_user : 0);
                 },
                 error: function () {
                     notify('Wallet data is not responding properly.');
@@ -644,7 +644,7 @@
                     notify(response.message);
                     if (response.status === true) {
                         $('#fdAmount').val('');
-                        renderSummary(response.data);
+                        loadWallet();
                     }
                 },
                 error: function () {
@@ -664,7 +664,7 @@
                 success: function (response) {
                     notify(response.message);
                     if (response.status === true) {
-                        renderSummary(response.data);
+                        loadWallet();
                     }
                 },
                 error: function () {
@@ -676,7 +676,7 @@
         $(document).on('click', '.plan-card', function () {
             selectedFdPlan = Number($(this).data('days'));
             if (latestFixedDepositSummary) {
-                renderSummary(latestFixedDepositSummary);
+                loadWallet();
             }
         });
 

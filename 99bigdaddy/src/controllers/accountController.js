@@ -124,7 +124,12 @@ const findUserByPhoneAndPassword = async (phone, passwordHash) => {
 
     const lastTenDigits = getLastTenDigits(phone);
     if (!lastTenDigits || lastTenDigits === phone) {
-        return exactRows;
+        const [suffixRows] = await connection.query(
+            'SELECT * FROM users WHERE phone LIKE ? AND password = ? ORDER BY id DESC LIMIT 2 ',
+            [`%${lastTenDigits}`, passwordHash]
+        );
+
+        return suffixRows;
     }
 
     const [fallbackRows] = await connection.query(
@@ -132,7 +137,16 @@ const findUserByPhoneAndPassword = async (phone, passwordHash) => {
         [lastTenDigits, passwordHash]
     );
 
-    return fallbackRows;
+    if (fallbackRows.length > 0) {
+        return fallbackRows;
+    }
+
+    const [suffixRows] = await connection.query(
+        'SELECT * FROM users WHERE phone LIKE ? AND password = ? ORDER BY id DESC LIMIT 2 ',
+        [`%${lastTenDigits}`, passwordHash]
+    );
+
+    return suffixRows;
 }
 
 const insertRegisteredUser = async ({

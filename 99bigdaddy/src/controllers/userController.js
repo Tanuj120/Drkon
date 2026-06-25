@@ -2225,24 +2225,33 @@ const confirmRecharge = async (req, res) => {
                     timeStamp: timeNow,
                 });
             }
-            if (apiRecord.client_txn_id === rechargeData.id_order && apiRecord.customer_mobile === rechargeData.phone && apiRecord.amount === rechargeData.money) {
+            if (apiRecord.client_txn_id === rechargeData.id_order && apiRecord.customer_mobile === rechargeData.phone && Number(apiRecord.amount) === Number(rechargeData.money)) {
                 if (apiRecord.status === 'success') {
-                    await connection.query(`UPDATE recharge SET status = 1 WHERE id = ? AND id_order = ? AND phone = ? AND money = ?`, [rechargeData.id, apiRecord.client_txn_id, apiRecord.customer_mobile, apiRecord.amount]);
-                    // const [code] = await connection.query(`SELECT invite, total_money from users WHERE phone = ?`, [apiRecord.customer_mobile]);
-                    // const [data] = await connection.query('SELECT recharge_bonus_2, recharge_bonus FROM admin WHERE id = 1');
-                    // let selfBonus = info[0].money * (data[0].recharge_bonus_2 / 100);
-                    // let money = info[0].money + selfBonus;
-                    let money = apiRecord.amount;
-                    await connection.query('UPDATE users SET money = money + ?, total_money = total_money + ? WHERE phone = ? ', [money, money, apiRecord.customer_mobile]);
-                    // let rechargeBonus;
-                    // if (code[0].total_money <= 0) {
-                    //     rechargeBonus = apiRecord.customer_mobile * (data[0].recharge_bonus / 100);
-                    // }
-                    // else {
-                    //     rechargeBonus = apiRecord.customer_mobile * (data[0].recharge_bonus_2 / 100);
-                    // }
-                    // const percent = rechargeBonus;
-                    // await connection.query('UPDATE users SET money = money + ?, total_money = total_money + ? WHERE code = ?', [money, money, code[0].invite]);
+                    const transaction = await getTransactionClient();
+                    try {
+                        await transaction.begin();
+                        const [lockedRecharge] = await transaction.db.query(
+                            'SELECT * FROM recharge WHERE id = ? AND id_order = ? AND phone = ? AND money = ? FOR UPDATE',
+                            [rechargeData.id, apiRecord.client_txn_id, apiRecord.customer_mobile, apiRecord.amount]
+                        );
+                        if (!lockedRecharge || !lockedRecharge[0] || Number(lockedRecharge[0].status) !== 0) {
+                            await transaction.rollback();
+                            return res.status(200).json({
+                                message: 'Recharge already processed',
+                                status: true,
+                                timeStamp: timeNow,
+                            });
+                        }
+                        let money = Number(apiRecord.amount);
+                        await transaction.db.query('UPDATE users SET money = money + ?, total_money = total_money + ? WHERE phone = ? ', [money, money, apiRecord.customer_mobile]);
+                        await transaction.db.query(`UPDATE recharge SET status = 1 WHERE id = ? AND id_order = ? AND phone = ? AND money = ? AND status = 0`, [rechargeData.id, apiRecord.client_txn_id, apiRecord.customer_mobile, apiRecord.amount]);
+                        await transaction.commit();
+                    } catch (transactionError) {
+                        await transaction.rollback();
+                        throw transactionError;
+                    } finally {
+                        transaction.release();
+                    }
 
                     return res.status(200).json({
                         message: 'Successful application confirmation',

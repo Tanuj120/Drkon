@@ -213,7 +213,7 @@
                 };
                 $('.profile .name').text(data.data.name_user);
                 $('.profile .id').text(data.data.id_user);
-                $('.profile .number').text("+91 " + data.data.phone_user);
+                $('.profile .number').text(formatDisplayPhone(data.data.phone_user));
             });
     </script>
     <!---->

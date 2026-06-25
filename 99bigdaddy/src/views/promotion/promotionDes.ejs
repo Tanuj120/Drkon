@@ -120,7 +120,7 @@
                         html += `
                         <div data-v-14912091="" class="bd van-row" style="overflow:hidden;">
                             <div data-v-14912091="" class="c-tc van-col van-col--6">${timerJoin(data.time)}</div>
-                            <div data-v-14912091="" class="c-tc van-col van-col--6">${data.phone.slice(0, 2)}****${data.phone.slice(-4)}</div>
+                            <div data-v-14912091="" class="c-tc van-col van-col--6">${maskPhoneNumber(data.phone)}</div>
                             <div data-v-14912091="" class="c-tc van-col van-col--6">${dataF1}</div>
                             <div data-v-14912091="" class="c-tc van-col van-col--6">${data.code}</div>
                         </div>
