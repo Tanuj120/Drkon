@@ -606,6 +606,9 @@ function GetMyEmerdList(datas) {
     }
     let htmls = "";
     let result = datas.map((data) => {
+        const orderNumber = data.id_product || data.stage || '';
+        const displayAmount = Number((data.status == 1) ? data.get : data.price);
+        const safeAmount = Number.isFinite(displayAmount) ? displayAmount.toFixed(2) : '0.00';
         let arr = formatHistoryDigits(data.result).split('');
         let resultData = ``;
         let total = 0;
@@ -643,7 +646,7 @@ function GetMyEmerdList(datas) {
               <div data-v-42f27458="" class="c-row c-row-between info">
                   <div data-v-42f27458="">
                       <div data-v-42f27458="" class="issueName">
-                        ${data.stage} 
+                        ${orderNumber}
                         <span data-v-42f27458="" class="state ${(data.status == 1) ? 'green' : 'red'}"" 
                         style="display: ${(data.status == 0) ? 'none' : ''};">${(data.status == 1) ? 'Success' : 'Fail'}</span>
                           <!---->
@@ -651,7 +654,7 @@ function GetMyEmerdList(datas) {
                       <div data-v-42f27458="" class="tiem">${timerJoin(data.time)}</div>
                   </div>
                   <div data-v-42f27458="" class="money" style="display: ${(data.status == 0) ? 'none' : ''}">
-                      <span data-v-42f27458="" class="${(data.status == 1) ? 'success' : 'fail'}"> ${(data.status == 1) ? '+' : '-'} ${(data.status == 1) ? data.get : data.price}.00 </span>
+                      <span data-v-42f27458="" class="${(data.status == 1) ? 'success' : 'fail'}"> ${(data.status == 1) ? '+' : '-'} ${safeAmount} </span>
                       <!---->
                   </div>
               </div>

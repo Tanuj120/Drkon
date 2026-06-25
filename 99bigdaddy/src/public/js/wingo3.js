@@ -1047,7 +1047,7 @@ function showListOrder2(list_orders, x) {
                               <div data-v-a9660e98="" class="c-row c-row-between info">
                                   <div data-v-a9660e98="">
                                       <div data-v-a9660e98="" class="issueName">
-                                      ${parseInt((list_orders.id_product) / 1000000000000000)}${parseInt((list_orders.stage) % 100000)} 
+                                      ${list_orders.id_product}
                                           ${list_orders.status == 1
         ? '<span data-v-a9660e98="" class="state green">Success</span>'
         : list_orders.status == 2

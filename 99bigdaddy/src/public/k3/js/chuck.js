@@ -129,13 +129,16 @@ function GetMyEmerdList(list_orders) {
     }
     let htmls = "";
     let result = list_orders.map((list_order) => {
+        const orderNumber = list_order.id_product || list_order.stage || '';
+        const displayAmount = Number((list_order.status == 1) ? list_order.get : list_order.price);
+        const safeAmount = Number.isFinite(displayAmount) ? displayAmount.toFixed(2) : '0.00';
         return (htmls += `
             <div data-v-03b808c2="">
                 <div data-v-03b808c2="" class="item c-row">
                     <div data-v-03b808c2="" class="c-row c-row-between c-row-middle info">
                         <div data-v-03b808c2="">
                             <div data-v-03b808c2="" class="issueName">
-                                ${list_order.stage}
+                                ${orderNumber}
                                 <!---->
                                 <span data-v-03b808c2="" class="state ${(list_order.status == 1) ? 'green' : 'red'} ${(list_order.status == 0) ? 'd-none' : ''}">${(list_order.status == 1) ? 'Success' : 'Failure'}</span>
                             </div>
@@ -143,7 +146,7 @@ function GetMyEmerdList(list_orders) {
                         </div>
                         <div data-v-03b808c2="" class="money ${(list_order.status == 0) ? 'd-none' : ''}">
                             <!---->
-                            <span data-v-03b808c2="" class="${(list_order.status == 1) ? 'success' : 'fail'}"> ${(list_order.status == 1) ? '+' : '-'}${(list_order.status == 1) ? list_order.get : list_order.price}.00 </span>
+                            <span data-v-03b808c2="" class="${(list_order.status == 1) ? 'success' : 'fail'}"> ${(list_order.status == 1) ? '+' : '-'}${safeAmount} </span>
                         </div>
                     </div>
                 </div>
