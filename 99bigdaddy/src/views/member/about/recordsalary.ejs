@@ -33,8 +33,19 @@
       background-color: #292929;
       height: auto;
       min-height: 100vh;
-      overflow-y: auto;
+      overflow: hidden;
       padding-bottom: 0.8rem;
+    }
+
+    .card {
+      height: calc(100vh - 1.33333rem);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 1.2rem;
+    }
+
+    #cardContainer {
+      padding-bottom: 1.5rem;
     }
 
     .mian .banner[data-v-439e6f58] {
