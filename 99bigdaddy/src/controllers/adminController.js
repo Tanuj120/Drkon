@@ -20,6 +20,37 @@ const getAffectedRows = (result) => {
     return Number(payload?.affectedRows || 0);
 }
 
+const cleanPhoneNumber = (phone) => String(phone || '').replace(/\D/g, '');
+
+const getLastTenDigits = (phone) => {
+    const digits = cleanPhoneNumber(phone);
+    return digits.length > 10 ? digits.slice(-10) : digits;
+}
+
+const findRechargeUserForUpdate = async (db, phone) => {
+    const digits = cleanPhoneNumber(phone);
+    const [exactRows] = await db.query('SELECT * FROM users WHERE phone = ? FOR UPDATE', [digits]);
+    if (exactRows && exactRows[0]) {
+        return { user: exactRows[0], ambiguous: false };
+    }
+
+    const lastTenDigits = getLastTenDigits(digits);
+    if (!lastTenDigits || lastTenDigits === digits) {
+        return { user: null, ambiguous: false };
+    }
+
+    const [suffixRows] = await db.query(
+        'SELECT * FROM users WHERE phone = ? OR phone LIKE ? ORDER BY id DESC FOR UPDATE',
+        [lastTenDigits, `%${lastTenDigits}`]
+    );
+
+    if (suffixRows.length > 1) {
+        return { user: null, ambiguous: true };
+    }
+
+    return { user: suffixRows[0] || null, ambiguous: false };
+}
+
 const adminPage = async (req, res) => {
     return res.render("manage/index.ejs");
 }
@@ -672,13 +703,19 @@ const rechargeDuyet = async (req, res) => {
                 return res.status(200).json({ message: 'Recharge is already closed', status: false, timeStamp: timeNow });
             }
 
-            const [data_set] = await db.query('SELECT * FROM users WHERE phone = ? FOR UPDATE', [info[0].phone]);
-            if (!data_set || !data_set[0]) {
+            const rechargePhone = cleanPhoneNumber(info[0].phone);
+            const matchedUser = await findRechargeUserForUpdate(db, rechargePhone);
+            if (matchedUser.ambiguous) {
+                await db.rollback();
+                return res.status(200).json({ message: 'Multiple users match this recharge phone. Please check manually.', status: false, timeStamp: timeNow });
+            }
+            if (!matchedUser.user) {
                 await db.rollback();
                 return res.status(200).json({ message: 'User not found for this recharge', status: false, timeStamp: timeNow });
             }
 
-            const userData = data_set[0];
+            const userData = matchedUser.user;
+            const userPhone = userData.phone;
             const baseMoney = Number(info[0].money || 0);
             let creditMoney = baseMoney;
             const incrementPercentage = Number(userData.first_deposit || 0) === 1 ? 0.05 : 0.15;
@@ -691,7 +728,7 @@ const rechargeDuyet = async (req, res) => {
 
             await db.query(
                 'UPDATE users SET money = money + ?, total_money = total_money + ?, first_deposit = ?, free_bonus = GREATEST(COALESCE(free_bonus, 0) - ?, 0) WHERE phone = ?',
-                [creditMoney, creditMoney, 1, freeBonusToUse, info[0].phone]
+                [creditMoney, creditMoney, 1, freeBonusToUse, userPhone]
             );
 
             const invite = userData.invite;
@@ -706,14 +743,14 @@ const rechargeDuyet = async (req, res) => {
 
             if (invite && salary > 0) {
                 const [agent] = await db.query('SELECT phone FROM users WHERE code = ? LIMIT 1', [invite]);
-                if (agent && agent[0] && agent[0].phone && agent[0].phone !== info[0].phone) {
+                if (agent && agent[0] && agent[0].phone && agent[0].phone !== userPhone) {
                     const salaryType = "Referral Bonus";
                     await db.execute('INSERT INTO salary (phone, amount, type, time) VALUES (?, ?, ?, ?)', [agent[0].phone, salary, salaryType, formattedTime]);
                     await db.query('UPDATE users SET money = money + ?, total_money = total_money + ? WHERE phone = ?', [salary, salary, agent[0].phone]);
                 }
             }
 
-            const statusResult = await db.query(`UPDATE recharge SET status = 1 WHERE id = ? AND status = 0`, [id]);
+            const statusResult = await db.query(`UPDATE recharge SET status = 1, phone = ? WHERE id = ? AND status = 0`, [userPhone, id]);
             if (!getAffectedRows(statusResult)) {
                 await db.rollback();
                 return res.status(200).json({ message: 'Recharge was already processed', status: false, timeStamp: timeNow });

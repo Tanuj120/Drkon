@@ -190,10 +190,17 @@
               },
               dataType: "json",
               success: function (response) {
-                Swal.fire('Confirmed!', 'Recharge Confirmed Successfully!', 'success');
+                if (!response || response.status !== true) {
+                  Swal.fire('Failed!', (response && response.message) || 'Recharge confirmation failed.', 'error');
+                  return;
+                }
+                Swal.fire('Confirmed!', response.message || 'Recharge Confirmed Successfully!', 'success');
                 setTimeout(() => {
                   location.reload();
                 }, 1000);
+              },
+              error: function () {
+                Swal.fire('Failed!', 'Server did not respond while confirming recharge.', 'error');
               }
             });
           }
@@ -222,10 +229,17 @@
               },
               dataType: "json",
               success: function (response) {
-                Swal.fire('Rejected!', 'Recharge Rejected Successfully!', 'success');
+                if (!response || response.status !== true) {
+                  Swal.fire('Failed!', (response && response.message) || 'Recharge rejection failed.', 'error');
+                  return;
+                }
+                Swal.fire('Rejected!', response.message || 'Recharge Rejected Successfully!', 'success');
                 setTimeout(() => {
                   location.reload();
                 }, 1000);
+              },
+              error: function () {
+                Swal.fire('Failed!', 'Server did not respond while rejecting recharge.', 'error');
               }
             });
           }
