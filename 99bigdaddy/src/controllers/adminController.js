@@ -225,9 +225,10 @@ const totalJoin = async (req, res) => {
 }
 
 const listMember = async (req, res) => {
-    let { pageno, limit } = req.body;
+    const pageno = Number.parseInt(req.body.pageno ?? '0', 10);
+    const limit = Number.parseInt(req.body.limit ?? '30', 10);
 
-    if (!pageno || !limit) {
+    if (!Number.isInteger(pageno) || !Number.isInteger(limit) || pageno < 0 || limit <= 0) {
         return res.status(200).json({
             code: 0,
             msg: "No more data",
@@ -238,30 +239,38 @@ const listMember = async (req, res) => {
         });
     }
 
-    if (pageno < 0 || limit < 0) {
-        return res.status(200).json({
-            code: 0,
-            msg: "No more data",
-            data: {
-                gameslist: [],
-            },
-            status: false
-        });
-    }
-    const [users] = await connection.query(`SELECT * FROM users WHERE veri = 1 AND level != 2 ORDER BY id DESC LIMIT ${pageno}, ${limit} `);
-    const [total_users] = await connection.query(`SELECT * FROM users WHERE veri = 1 AND level != 2`);
+    const safeLimit = Math.min(limit, 100);
+    const [users] = await connection.query(`
+        SELECT
+            u.*,
+            inviter.phone AS referral_phone,
+            COALESCE(directs.direct_count, 0) AS direct_count
+        FROM users u
+        LEFT JOIN users inviter ON inviter.code = u.invite
+        LEFT JOIN (
+            SELECT invite, COUNT(*) AS direct_count
+            FROM users
+            WHERE veri = 1
+            GROUP BY invite
+        ) directs ON directs.invite = u.code
+        WHERE u.veri = 1
+        ORDER BY u.id DESC
+        LIMIT ?, ?
+    `, [pageno, safeLimit]);
+    const [[total_users]] = await connection.query(`SELECT COUNT(*) AS total FROM users WHERE veri = 1`);
     return res.status(200).json({
         message: 'Success',
         status: true,
         datas: users,
-        page_total: Math.ceil(total_users.length / limit)
+        page_total: Math.max(Math.ceil(Number(total_users.total || 0) / safeLimit), 1)
     });
 }
 
 const listCTV = async (req, res) => {
-    let { pageno, pageto } = req.body;
+    const pageno = Number.parseInt(req.body.pageno ?? '0', 10);
+    const pageto = Number.parseInt(req.body.pageto ?? '30', 10);
 
-    if (!pageno || !pageto) {
+    if (!Number.isInteger(pageno) || !Number.isInteger(pageto) || pageno < 0 || pageto <= 0) {
         return res.status(200).json({
             code: 0,
             msg: "No more data",
@@ -271,18 +280,8 @@ const listCTV = async (req, res) => {
             status: false
         });
     }
-
-    if (pageno < 0 || pageto < 0) {
-        return res.status(200).json({
-            code: 0,
-            msg: "No more data",
-            data: {
-                gameslist: [],
-            },
-            status: false
-        });
-    }
-    const [wingo] = await connection.query(`SELECT * FROM users WHERE veri = 1 AND level = 2 ORDER BY id DESC LIMIT ${pageno}, ${pageto} `);
+    const safeLimit = Math.min(pageto, 100);
+    const [wingo] = await connection.query(`SELECT * FROM users WHERE veri = 1 AND level = 2 ORDER BY id DESC LIMIT ?, ?`, [pageno, safeLimit]);
     return res.status(200).json({
         message: 'Success',
         status: true,
@@ -326,7 +325,22 @@ const getReferredUsers = async (req, res) => {
     const userCode = req.params.code;
 
     try {
-        const [rows] = await connection.execute('SELECT * FROM users WHERE invite = ?', [userCode]);
+        const [rows] = await connection.execute(`
+            SELECT
+                u.*,
+                inviter.phone AS referral_phone,
+                COALESCE(directs.direct_count, 0) AS direct_count
+            FROM users u
+            LEFT JOIN users inviter ON inviter.code = u.invite
+            LEFT JOIN (
+                SELECT invite, COUNT(*) AS direct_count
+                FROM users
+                WHERE veri = 1
+                GROUP BY invite
+            ) directs ON directs.invite = u.code
+            WHERE u.invite = ?
+            ORDER BY u.id DESC
+        `, [userCode]);
 
         if (rows.length > 0) {
             res.json({ users: rows });
@@ -837,7 +851,7 @@ const handlWithdraw = async (req, res) => {
         return res.status(200).json({
             message: 'Successful application confirmation',
             status: true,
-            datas: recharge,
+            datas: info,
         });
     }
     if (type == 'delete') {
@@ -847,7 +861,7 @@ const handlWithdraw = async (req, res) => {
         return res.status(200).json({
             message: 'Cancel successfully',
             status: true,
-            datas: recharge,
+            datas: info,
         });
     }
 }
@@ -876,7 +890,7 @@ const settingBank = async (req, res) => {
             return res.status(200).json({
                 message: 'Successful change',
                 status: true,
-                datas: recharge,
+                datas: [],
             });
         }
 
@@ -903,7 +917,7 @@ const settingBank = async (req, res) => {
             return res.status(200).json({
                 message: 'Successfully changed',
                 status: true,
-                datas: recharge,
+                datas: [],
             });
         }
     } catch (error) {
@@ -1610,20 +1624,10 @@ const infoCtv2 = async (req, res) => {
 const listRechargeMem = async (req, res) => {
     let auth = req.cookies.auth;
     let phone = req.params.phone;
-    let { pageno, limit } = req.body;
+    const pageno = Number.parseInt(req.body.pageno ?? '0', 10);
+    const limit = Number.parseInt(req.body.limit ?? '30', 10);
 
-    if (!pageno || !limit) {
-        return res.status(200).json({
-            code: 0,
-            msg: "No more data",
-            data: {
-                gameslist: [],
-            },
-            status: false
-        });
-    }
-
-    if (pageno < 0 || limit < 0) {
+    if (!Number.isInteger(pageno) || !Number.isInteger(limit) || pageno < 0 || limit <= 0) {
         return res.status(200).json({
             code: 0,
             msg: "No more data",
@@ -1654,33 +1658,24 @@ const listRechargeMem = async (req, res) => {
     }
     let { token, password, otp, level, ...userInfo } = user[0];
 
-    const [recharge] = await connection.query(`SELECT * FROM recharge WHERE phone = ? ORDER BY id DESC LIMIT ${pageno}, ${limit} `, [phone]);
-    const [total_users] = await connection.query(`SELECT * FROM recharge WHERE phone = ?`, [phone]);
+    const safeLimit = Math.min(limit, 100);
+    const [recharge] = await connection.query(`SELECT * FROM recharge WHERE phone = ? ORDER BY id DESC LIMIT ?, ?`, [phone, pageno, safeLimit]);
+    const [[total_users]] = await connection.query(`SELECT COUNT(*) AS total FROM recharge WHERE phone = ?`, [phone]);
     return res.status(200).json({
         message: 'Success',
         status: true,
         datas: recharge,
-        page_total: Math.ceil(total_users.length / limit)
+        page_total: Math.max(Math.ceil(Number(total_users.total || 0) / safeLimit), 1)
     });
 }
 
 const listWithdrawMem = async (req, res) => {
     let auth = req.cookies.auth;
     let phone = req.params.phone;
-    let { pageno, limit } = req.body;
+    const pageno = Number.parseInt(req.body.pageno ?? '0', 10);
+    const limit = Number.parseInt(req.body.limit ?? '30', 10);
 
-    if (!pageno || !limit) {
-        return res.status(200).json({
-            code: 0,
-            msg: "No more data",
-            data: {
-                gameslist: [],
-            },
-            status: false
-        });
-    }
-
-    if (pageno < 0 || limit < 0) {
+    if (!Number.isInteger(pageno) || !Number.isInteger(limit) || pageno < 0 || limit <= 0) {
         return res.status(200).json({
             code: 0,
             msg: "No more data",
@@ -1711,33 +1706,24 @@ const listWithdrawMem = async (req, res) => {
     }
     let { token, password, otp, level, ...userInfo } = user[0];
 
-    const [withdraw] = await connection.query(`SELECT * FROM withdraw WHERE phone = ? ORDER BY id DESC LIMIT ${pageno}, ${limit} `, [phone]);
-    const [total_users] = await connection.query(`SELECT * FROM withdraw WHERE phone = ?`, [phone]);
+    const safeLimit = Math.min(limit, 100);
+    const [withdraw] = await connection.query(`SELECT * FROM withdraw WHERE phone = ? ORDER BY id DESC LIMIT ?, ?`, [phone, pageno, safeLimit]);
+    const [[total_users]] = await connection.query(`SELECT COUNT(*) AS total FROM withdraw WHERE phone = ?`, [phone]);
     return res.status(200).json({
         message: 'Success',
         status: true,
         datas: withdraw,
-        page_total: Math.ceil(total_users.length / limit)
+        page_total: Math.max(Math.ceil(Number(total_users.total || 0) / safeLimit), 1)
     });
 }
 
 const listRedenvelope = async (req, res) => {
     let auth = req.cookies.auth;
     let phone = req.params.phone;
-    let { pageno, limit } = req.body;
+    const pageno = Number.parseInt(req.body.pageno ?? '0', 10);
+    const limit = Number.parseInt(req.body.limit ?? '30', 10);
 
-    if (!pageno || !limit) {
-        return res.status(200).json({
-            code: 0,
-            msg: "No more data",
-            data: {
-                gameslist: [],
-            },
-            status: false
-        });
-    }
-
-    if (pageno < 0 || limit < 0) {
+    if (!Number.isInteger(pageno) || !Number.isInteger(limit) || pageno < 0 || limit <= 0) {
         return res.status(200).json({
             code: 0,
             msg: "No more data",
@@ -1768,13 +1754,14 @@ const listRedenvelope = async (req, res) => {
     }
     let { token, password, otp, level, ...userInfo } = user[0];
 
-    const [redenvelopes_used] = await connection.query(`SELECT * FROM redenvelopes_used WHERE phone_used = ? ORDER BY id DESC LIMIT ${pageno}, ${limit} `, [phone]);
-    const [total_users] = await connection.query(`SELECT * FROM redenvelopes_used WHERE phone_used = ?`, [phone]);
+    const safeLimit = Math.min(limit, 100);
+    const [redenvelopes_used] = await connection.query(`SELECT * FROM redenvelopes_used WHERE phone_used = ? ORDER BY id DESC LIMIT ?, ?`, [phone, pageno, safeLimit]);
+    const [[total_users]] = await connection.query(`SELECT COUNT(*) AS total FROM redenvelopes_used WHERE phone_used = ?`, [phone]);
     return res.status(200).json({
         message: 'Success',
         status: true,
         datas: redenvelopes_used,
-        page_total: Math.ceil(total_users.length / limit)
+        page_total: Math.max(Math.ceil(Number(total_users.total || 0) / safeLimit), 1)
     });
 }
 // Level Setting get
@@ -1833,20 +1820,10 @@ const getLevelInfo = async (req, res) => {
 const listBet = async (req, res) => {
     let auth = req.cookies.auth;
     let phone = req.params.phone;
-    let { pageno, limit } = req.body;
+    const pageno = Number.parseInt(req.body.pageno ?? '0', 10);
+    const limit = Number.parseInt(req.body.limit ?? '30', 10);
 
-    if (!pageno || !limit) {
-        return res.status(200).json({
-            code: 0,
-            msg: "No more data",
-            data: {
-                gameslist: [],
-            },
-            status: false
-        });
-    }
-
-    if (pageno < 0 || limit < 0) {
+    if (!Number.isInteger(pageno) || !Number.isInteger(limit) || pageno < 0 || limit <= 0) {
         return res.status(200).json({
             code: 0,
             msg: "No more data",
@@ -1877,13 +1854,14 @@ const listBet = async (req, res) => {
     }
     let { token, password, otp, level, ...userInfo } = user[0];
 
-    const [listBet] = await connection.query(`SELECT * FROM minutes_1 WHERE phone = ? AND status != 0 ORDER BY id DESC LIMIT ${pageno}, ${limit} `, [phone]);
-    const [total_users] = await connection.query(`SELECT * FROM minutes_1 WHERE phone = ? AND status != 0`, [phone]);
+    const safeLimit = Math.min(limit, 100);
+    const [listBet] = await connection.query(`SELECT * FROM minutes_1 WHERE phone = ? AND status != 0 ORDER BY id DESC LIMIT ?, ?`, [phone, pageno, safeLimit]);
+    const [[total_users]] = await connection.query(`SELECT COUNT(*) AS total FROM minutes_1 WHERE phone = ? AND status != 0`, [phone]);
     return res.status(200).json({
         message: 'Success',
         status: true,
         datas: listBet,
-        page_total: Math.ceil(total_users.length / limit)
+        page_total: Math.max(Math.ceil(Number(total_users.total || 0) / safeLimit), 1)
     });
 }
 
