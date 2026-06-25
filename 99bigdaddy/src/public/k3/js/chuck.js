@@ -30,6 +30,11 @@ socket.on("data-server-k3", function (msg) {
 });
 }
 
+function formatHistoryDigits(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? String(Math.trunc(number)) : String(value || '').replace(/\.00$/, '');
+}
+
 function ShowListOrder(list_orders) {
     if (list_orders.length == 0) {
         return $(`#list_order`).html(
@@ -45,7 +50,7 @@ function ShowListOrder(list_orders) {
     }
     let htmls = "";
     let result = list_orders.map((list_orders) => {
-        let total = String(list_orders.result).split('');
+        let total = formatHistoryDigits(list_orders.result).split('');
         let total2 = 0;
         for (let i = 0; i < total.length; i++) {
             total2 += Number(total[i]);
@@ -165,7 +170,7 @@ function callListOrder() {
             $("#number_result").text("1/" + (response?.page || 1));
             ShowListOrder(list_orders);
             if (!list_orders.length) return;
-            let result = String(list_orders[0].result).split('');
+            let result = formatHistoryDigits(list_orders[0].result).split('');
             $('.slot-transform:eq(0) .slot-num').attr('class', `slot-num bg${result[0]}`);
             $('.slot-transform:eq(1) .slot-num').attr('class', `slot-num bg${result[1]}`);
             $('.slot-transform:eq(2) .slot-num').attr('class', `slot-num bg${result[2]}`);

@@ -1,3 +1,8 @@
+function formatHistoryNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? String(Math.trunc(number)) : String(value || '').replace(/\.00$/, '');
+}
+
 function showListOrder3(list_orders, x) {
   if (list_orders.length == 0) {
     return $(`.game-list .con-box:eq(${x}) .hb`).html(
@@ -23,7 +28,7 @@ function showListOrder3(list_orders, x) {
                             <div data-v-a9660e98="" class="c-tc goItem">
                                 <!---->
                                 <span data-v-a9660e98="" class="${list_orders.amount % 2 == 0 ? "red" : "green"
-      }"> ${list_orders.amount} </span>
+      }"> ${formatHistoryNumber(list_orders.amount)} </span>
                             </div>
                         </div>
                         <div data-v-a9660e98="" class="van-col van-col--5">
@@ -813,7 +818,7 @@ function showListOrder(list_orders, x) {
                             <span data-v-a9660e98=""
                               class="${list_orders.amount % 2 === 0 ? 'red' : 'green'} ${list_orders.amount === 0 ? 'zero-amount' : list_orders.amount === 5 ? 'five-amount' : ''}"
                               style="font-size: 28px; font-weight: bolder; ${list_orders.amount === 0 ? 'background: linear-gradient(to bottom, red 50%, #eb43dd 50%); -webkit-background-clip: text; color: transparent;' : list_orders.amount === 5 ? 'background: linear-gradient(to bottom, green 50%, #eb43dd 50%); -webkit-background-clip: text; color: transparent;' : ''}">
-                              ${list_orders.amount}
+                              ${formatHistoryNumber(list_orders.amount)}
                             </span>
                           </div>
                         </div>

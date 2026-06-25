@@ -82,6 +82,11 @@ function alertMess(text, sic) {
     }, 1000);
 }
 
+function formatHistoryDigits(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? String(Math.trunc(number)) : String(value || '').replace(/\.00$/, '');
+}
+
 function ShowListOrder(list_orders) {
     if (list_orders.length == 0) {
         return $(`#list_order`).html(
@@ -97,7 +102,7 @@ function ShowListOrder(list_orders) {
     }
     let htmls = "";
     let result = list_orders.map((list_orders) => {
-        let arr = list_orders.result.split('');
+        let arr = formatHistoryDigits(list_orders.result).split('');
         let resultData = ``;
         let total = 0;
 
@@ -601,7 +606,7 @@ function GetMyEmerdList(datas) {
     }
     let htmls = "";
     let result = datas.map((data) => {
-        let arr = data.result.split('');
+        let arr = formatHistoryDigits(data.result).split('');
         let resultData = ``;
         let total = 0;
 
