@@ -135,11 +135,21 @@
       font-size: 18px;
       width: 100%;
       text-align: center;
-      color: rgb(193, 88, 44);
-      background-color: rgba(253, 215, 48, 0.911);
+      color: #0b2540;
+      background: linear-gradient(135deg, #ffe48a, #d79d32);
       padding: 5px 10px;
       border-radius: 3px;
       font-weight: bold;
+    }
+
+    .status-title.credit {
+      color: #063515;
+      background: linear-gradient(135deg, #b9ffca, #38b75a);
+    }
+
+    .status-title.debit {
+      color: #4a170b;
+      background: linear-gradient(135deg, #ffd2c4, #ff7b54);
     }
 
     .info-row {
@@ -158,6 +168,20 @@
       font-size: 16px;
       font-weight: bolder;
       color: white;
+      text-align: right;
+      max-width: 60%;
+      word-break: break-word;
+    }
+
+    .empty-state {
+      margin: 20px 15px;
+      padding: 25px 15px;
+      background-color: #333;
+      color: #d8d8d8;
+      border: 1px solid #5b5b5b;
+      border-radius: 8px;
+      text-align: center;
+      font-size: 16px;
     }
   </style>
 </head>
@@ -208,12 +232,13 @@
       },
       error: function (xhr, status, error) {
         console.log('Error fetching data:', error);
+        $('#cardContainer').html('<div class="empty-state">Unable to load transaction records. Please try again.</div>');
 
       }
     });
 
     // Function to update the table with new data
-    function updateTable(data) {
+    function legacyUpdateTable(data) {
       if (Array.isArray(data.rows) && data.rows.length > 0) {
         var cardContainer = $('#cardContainer');
         cardContainer.empty();
@@ -256,6 +281,72 @@
 
 
 
+
+    function updateTable(data) {
+      var cardContainer = $('#cardContainer');
+      cardContainer.empty();
+
+      if (!Array.isArray(data.rows) || data.rows.length === 0) {
+        cardContainer.html('<div class="empty-state">No transaction records yet.</div>');
+        return;
+      }
+
+      data.rows.forEach(function (item) {
+        var amount = Number(item.amount || 0).toFixed(2);
+        var isCredit = item.direction === 'credit';
+        var amountColor = isCredit ? '#3ed15f' : '#ff7b54';
+        var amountPrefix = isCredit ? '+&#8377; ' : '-&#8377; ';
+        var titleClass = isCredit ? 'credit' : 'debit';
+        var orderRow = item.orderId ? `
+                        <div class="info-row">
+                            <div class="info-label">Order ID</div>
+                            <div class="info-value">${escapeHtml(item.orderId)}</div>
+                        </div>` : '';
+        var descriptionRow = item.description ? `
+                        <div class="info-row">
+                            <div class="info-label">Details</div>
+                            <div class="info-value">${escapeHtml(item.description)}</div>
+                        </div>` : '';
+        var card = `
+                <div class="card-item">
+                    <div class="status-container">
+                        <div class="status-header">
+                            <div class="status-title ${titleClass}">${escapeHtml(item.title || 'Transaction')}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Amount</div>
+                            <div class="info-value" style="color: ${amountColor};">${amountPrefix}${amount}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Type</div>
+                            <div class="info-value">${escapeHtml(item.type || '-')}</div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-label">Status</div>
+                            <div class="info-value">${escapeHtml(item.status || '-')}</div>
+                        </div>
+                        ${orderRow}
+                        ${descriptionRow}
+                        <div class="info-row">
+                            <div class="info-label">Time</div>
+                            <div class="info-value">${escapeHtml(item.time || '-')}</div>
+                        </div>
+                    </div>
+                </div>
+                <br>
+            `;
+        cardContainer.append(card);
+      });
+    }
+
+    function escapeHtml(value) {
+      return String(value === undefined || value === null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
 
   </script>
 </body>
