@@ -266,9 +266,28 @@ const listOrderOld = async (req, res) => {
     let game = Number(gameJoin);
 
     const activePeriod = await ensure5DRound(game);
-    const [k5d] = await connection.query(`SELECT * FROM 5d WHERE status != 0 AND game = '${game}' ORDER BY id DESC LIMIT ${pageno}, ${pageto} `);
-    const [k5dAll] = await connection.query(`SELECT * FROM 5d WHERE status != 0 AND game = '${game}' `);
-    const [period] = await connection.query(`SELECT period FROM 5d WHERE status = 0 AND game = '${game}' ORDER BY id DESC LIMIT 1 `);
+    const offset = Number(pageno);
+    const limit = Number(pageto);
+    if (!Number.isInteger(offset) || !Number.isInteger(limit) || offset < 0 || limit <= 0) {
+        return res.status(200).json({
+            message: 'Error!',
+            status: false
+        });
+    }
+    const [k5d] = await connection.query(`
+        SELECT five_d.*
+        FROM \`5d\` AS five_d
+        INNER JOIN (
+            SELECT MAX(id) AS id
+            FROM \`5d\`
+            WHERE status != 0 AND game = ?
+            GROUP BY period
+        ) latest ON latest.id = five_d.id
+        ORDER BY CAST(five_d.period AS UNSIGNED) DESC, five_d.id DESC
+        LIMIT ?, ?
+    `, [game, offset, limit]);
+    const [[k5dAll]] = await connection.query('SELECT COUNT(DISTINCT period) AS total FROM `5d` WHERE status != 0 AND game = ?', [game]);
+    const [period] = await connection.query('SELECT period FROM `5d` WHERE status = 0 AND game = ? ORDER BY id DESC LIMIT 1', [game]);
     if (k5d.length == 0) {
         return res.status(200).json({
             code: 0,
@@ -287,7 +306,7 @@ const listOrderOld = async (req, res) => {
             status: false
         });
     }
-    let page = Math.ceil(k5dAll.length / 10);
+    let page = Math.max(Math.ceil(Number(k5dAll.total || 0) / limit), 1);
     return res.status(200).json({
         code: 0,
         msg: "Get success",

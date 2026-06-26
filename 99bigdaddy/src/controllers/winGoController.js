@@ -473,8 +473,27 @@ const listOrderOld = async (req, res) => {
     if (typeid == 10) game = 'wingo10';
     const activePeriod = await ensureWinGoRound(game);
 
-    const [wingo] = await connection.query(`SELECT * FROM wingo WHERE status != 0 AND game = '${game}' ORDER BY id DESC LIMIT ${pageno}, ${pageto} `);
-    const [wingoAll] = await connection.query(`SELECT * FROM wingo WHERE status != 0 AND game = '${game}' `);
+    const offset = Number(pageno);
+    const limit = Number(pageto);
+    if (!Number.isInteger(offset) || !Number.isInteger(limit) || offset < 0 || limit <= 0) {
+        return res.status(200).json({
+            message: 'Error!',
+            status: false
+        });
+    }
+    const [wingo] = await connection.query(`
+        SELECT wingo.*
+        FROM wingo
+        INNER JOIN (
+            SELECT MAX(id) AS id
+            FROM wingo
+            WHERE status != 0 AND game = ?
+            GROUP BY period
+        ) latest ON latest.id = wingo.id
+        ORDER BY CAST(wingo.period AS UNSIGNED) DESC, wingo.id DESC
+        LIMIT ?, ?
+    `, [game, offset, limit]);
+    const [[wingoAll]] = await connection.query(`SELECT COUNT(DISTINCT period) AS total FROM wingo WHERE status != 0 AND game = ?`, [game]);
     const [period] = await connection.query(`SELECT period FROM wingo WHERE status = 0 AND game = '${game}' ORDER BY id DESC LIMIT 1 `);
     if (!wingo[0]) {
         return res.status(200).json({
@@ -494,7 +513,7 @@ const listOrderOld = async (req, res) => {
             status: false
         });
     }
-    let page = Math.ceil(wingoAll.length / 10);
+    let page = Math.max(Math.ceil(Number(wingoAll.total || 0) / limit), 1);
     return res.status(200).json({
         code: 0,
         msg: "Receive success",
