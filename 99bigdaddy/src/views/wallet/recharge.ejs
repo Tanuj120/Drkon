@@ -213,7 +213,7 @@
                                 <div data-v-67caa467="" class="input van-cell van-field">
                                     <div class="van-cell__value van-cell__value--alone van-field__value">
                                         <div class="van-field__body">
-                                            <input type="text" id="money_amount_input" value="10" inputmode="decimal"
+                                            <input type="text" id="money_amount_input" value="5" inputmode="decimal"
                                                 name="amount" placeholder="Enter USDT amount"
                                                 class="van-field__control">
                                         </div>
@@ -225,7 +225,7 @@
                                 <div data-v-67caa467="" class="input van-cell van-field">
                                     <div class="van-cell__value van-cell__value--alone van-field__value">
                                         <div class="van-field__body">
-                                            <input type="text" id="money_amount_inr_input" value="980" inputmode="decimal"
+                                            <input type="text" id="money_amount_inr_input" value="490" inputmode="decimal"
                                                 name="amount_inr" placeholder="INR equivalent"
                                                 class="van-field__control">
                                         </div>
@@ -238,8 +238,8 @@
                             <!-- Quick Money Amount Options -->
                             <div id="quick_money_options" data-v-67caa467=""
                                 class="list m-t-10 c-row c-row-between c-flex-warp">
-                                <div data-v-67caa467="" data-money="10" class="li action">
-                                    <span data-v-67caa467="" class="number">$10</span>
+                                <div data-v-67caa467="" data-money="5" class="li action">
+                                    <span data-v-67caa467="" class="number">$5</span>
                                 </div>
                                 <div data-v-67caa467="" data-money="50" class="li">
                                     <span data-v-67caa467="" class="number">$50</span>
@@ -321,7 +321,7 @@
         let CurrencyConversionNote = document.querySelector("#currency_conversion_note")
 
         const USDT_TO_INR_RATE = 98
-        const MINIMUM_USDT_AMOUNT = 10
+        const MINIMUM_USDT_AMOUNT = 5
         let inputMoney = MINIMUM_USDT_AMOUNT
 
         const sanitizeAmount = (value) => String(value || '').replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1')

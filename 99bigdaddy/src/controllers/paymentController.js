@@ -7,10 +7,44 @@ import QRCode from 'qrcode'
 
 let timeNow = Date.now();
 const MINIMUM_DEPOSIT_AMOUNT = 500;
-const MINIMUM_USD_DEPOSIT_AMOUNT = 10;
+const MINIMUM_USD_DEPOSIT_AMOUNT = 5;
 const USDT_TO_INR_RATE = 98;
+const MAX_TRANSACTION_HASH_LENGTH = 191;
 const DEFAULT_USDT_WALLET_ADDRESS = "0xB2e20EB91866CDDEAa588f3cAec76835c442445d";
 const DEFAULT_USDT_QR_CODE_URL = "/index_files/qr.jpeg";
+let rechargeHashSchemaReady = false;
+
+const normalizeTransactionHash = (hash) => {
+    const value = String(hash || "").trim();
+    return /^0x[a-fA-F0-9]{64}$/.test(value) ? value.toLowerCase() : value;
+}
+
+const isValidTransactionHash = (hash) => {
+    if (!hash || hash.length > MAX_TRANSACTION_HASH_LENGTH) return false;
+    return /^0x[a-fA-F0-9]{64}$/.test(hash) || /^[A-Za-z0-9][A-Za-z0-9._:-]{5,190}$/.test(hash);
+}
+
+const ensureRechargeHashSchema = async () => {
+    if (rechargeHashSchemaReady) return;
+    try {
+        await connection.query('ALTER TABLE recharge MODIFY COLUMN utr VARCHAR(191) NULL DEFAULT NULL');
+    } catch (error) {
+        if (error?.code === 'ER_BAD_FIELD_ERROR') {
+            await connection.query('ALTER TABLE recharge ADD COLUMN utr VARCHAR(191) NULL DEFAULT NULL');
+        } else {
+            throw error;
+        }
+    }
+    rechargeHashSchemaReady = true;
+}
+
+const isTransactionHashUsed = async (hash) => {
+    const [rows] = await connection.query(
+        "SELECT id FROM recharge WHERE utr IS NOT NULL AND utr != 'NULL' AND LOWER(utr) = LOWER(?) LIMIT 1",
+        [hash]
+    );
+    return rows.length > 0;
+}
 
 const normalizeUsdtWalletAddress = (walletAddress) => {
     const trimmedAddress = String(walletAddress || "").trim();
@@ -105,7 +139,7 @@ const addManualUPIPaymentRequest = async (req, res) => {
         const data = req.body
         let auth = req.cookies.auth;
         let money = parseInt(data.money);
-        let utr = String(data.utr || '').trim();
+        let utr = normalizeTransactionHash(data.utr);
         const minimumMoneyAllowed = MINIMUM_DEPOSIT_AMOUNT
         const timeNow = new Date().toISOString();
 
@@ -117,9 +151,19 @@ const addManualUPIPaymentRequest = async (req, res) => {
             })
         }
 
-        if (!utr) {
+        if (!isValidTransactionHash(utr)) {
             return res.status(400).json({
-                message: `Transaction Hash No. is Required`,
+                message: `Please enter a valid Transaction Hash No.`,
+                status: false,
+                timeStamp: timeNow,
+            })
+        }
+
+        await ensureRechargeHashSchema();
+
+        if (await isTransactionHashUsed(utr)) {
+            return res.status(400).json({
+                message: `This Transaction Hash No. is already submitted`,
                 status: false,
                 timeStamp: timeNow,
             })
@@ -177,7 +221,7 @@ const addManualUSDTPaymentRequest = async (req, res) => {
         let auth = req.cookies.auth;
         let money_usdt = parseFloat(data.money);
         let money = Number((money_usdt * USDT_TO_INR_RATE).toFixed(2));
-        let utr = String(data.utr || '').trim();
+        let utr = normalizeTransactionHash(data.utr);
         const minimumMoneyAllowed = MINIMUM_USD_DEPOSIT_AMOUNT
         const today = moment().format("YYYY-MM-DD");
         const createdAt = moment().format("YYYY-MM-DD HH:mm:ss");
@@ -190,9 +234,19 @@ const addManualUSDTPaymentRequest = async (req, res) => {
             })
         }
 
-        if (!utr) {
+        if (!isValidTransactionHash(utr)) {
             return res.status(400).json({
-                message: `Transaction Hash No. is Required`,
+                message: `Please enter a valid Transaction Hash No.`,
+                status: false,
+                timeStamp: timeNow,
+            })
+        }
+
+        await ensureRechargeHashSchema();
+
+        if (await isTransactionHashUsed(utr)) {
+            return res.status(400).json({
+                message: `This Transaction Hash No. is already submitted`,
                 status: false,
                 timeStamp: timeNow,
             })

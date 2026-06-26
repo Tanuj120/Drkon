@@ -361,9 +361,9 @@
             <a href="/index_files/qr.jpeg" download="bep20-usdt-qr.jpeg" class="upi_pay_now">Download QR Code</a>
         </div>
 
-        <form class="verification_form__root" action="submit.php" method="post">
+        <form class="verification_form__root" id="transaction_hash_form" action="#" method="post">
             <label for="ref_no">Transaction Hash No.</label>
-            <input type="text" id="ref_no" name="ref_no" required placeholder="Enter Transaction Hash no." />
+            <input type="text" id="ref_no" name="ref_no" required maxlength="191" autocapitalize="off" spellcheck="false" placeholder="Enter Transaction Hash no." />
             <button id="submit_button" type="submit">Submit</button>
         </form>
 
@@ -442,15 +442,26 @@
         });
 
         const submitButton = document.getElementById("submit_button");
-        submitButton.addEventListener("click", async (event) => {
+        const transactionHashForm = document.getElementById("transaction_hash_form");
+        const isValidTransactionHash = (hash) => {
+            return /^0x[a-fA-F0-9]{64}$/.test(hash) || /^[A-Za-z0-9][A-Za-z0-9._:-]{5,190}$/.test(hash);
+        }
+
+        transactionHashForm.addEventListener("submit", async (event) => {
             try {
                 event.preventDefault();
-                const refNo = document.getElementById("ref_no").value.trim();
+                const refNoInput = document.getElementById("ref_no");
+                const refNo = refNoInput.value.trim();
                 const amount = '<%=Amount%>';
                 if (!refNo) {
                     alertMessage("Please enter Transaction Hash No.");
                     return;
                 }
+                if (!isValidTransactionHash(refNo)) {
+                    alertMessage("Please enter a valid Transaction Hash No.");
+                    return;
+                }
+                refNoInput.value = refNo;
                 submitButton.disabled = true;
                 submitButton.textContent = "Submitting...";
                 const response = await axios.post("/wallet/paynow/manual_usdt_request", {
