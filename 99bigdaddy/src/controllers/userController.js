@@ -185,10 +185,9 @@ const distributeCopyGamingLevelIncome = async (db, { buyer, amount, fixedDeposit
                 );
 
                 if (insertResult.affectedRows > 0) {
-                    const directIncome = levelNo === 1 ? incomeAmount : 0;
                     await db.execute(
                         'UPDATE users SET money = money + ?, roses_f = roses_f + ?, roses_f1 = roses_f1 + ?, roses_today = roses_today + ? WHERE phone = ? AND status = 1 AND veri = 1',
-                        [incomeAmount, incomeAmount, directIncome, incomeAmount, referrerPhone]
+                        [incomeAmount, incomeAmount, 0, incomeAmount, referrerPhone]
                     );
                     credited.push({ level: levelNo, phone: referrerPhone, amount: incomeAmount, percentage });
                 }
@@ -1116,9 +1115,8 @@ const promotion = async (req, res) => {
     user[0].code = userInfo.code;
     const referralTeam = await buildReferralTeam(userInfo, REFERRAL_MAX_LEVEL);
 
-    const rosesF1 = parseFloat(userInfo.roses_f);
-    const rosesAll = parseFloat(userInfo.roses_f1);
-    let rosesAdd = rosesF1 + rosesAll;
+    const teamCommission = formatMoney(userInfo.roses_f);
+    const todayTeamCommission = formatMoney(userInfo.roses_today);
 
     return res.status(200).json({
         message: 'Receive success',
@@ -1130,10 +1128,10 @@ const promotion = async (req, res) => {
             total_f: referralTeam.team.length,
             f1_today: referralTeam.directToday,
             f_all_today: referralTeam.totalToday,
-            roses_f1: userInfo.roses_f1,
-            roses_f: userInfo.roses_f,
-            roses_all: rosesAdd,
-            roses_today: userInfo.roses_today,
+            roses_f1: 0,
+            roses_f: teamCommission,
+            roses_all: teamCommission,
+            roses_today: todayTeamCommission,
             max_level: REFERRAL_MAX_LEVEL,
         },
         timeStamp: timeNow,
