@@ -1,4 +1,5 @@
 import connection from "../config/connectDB.js";
+import { ensureGameRound } from "../utils/gamePeriod.js";
 import ensureGameSchema from "../utils/ensureGameSchema.js";
 // import jwt from 'jsonwebtoken'
 // import md5 from "md5";
@@ -58,31 +59,7 @@ function timerJoin(params = '', addHours = 0) {
     return years + '-' + months + '-' + days + ' ' + hours + ':' + minutes + ':' + seconds + ' ' + ampm;
 }
 
-const makeInitialPeriod = () => {
-    const date = new Date();
-    return Number(`${formateT(date.getFullYear())}${formateT(date.getMonth() + 1)}${formateT(date.getDate())}10000`);
-}
-
-const ensureWinGoRound = async (game) => {
-    const [activeRows] = await connection.query('SELECT period FROM wingo WHERE status = 0 AND game = ? ORDER BY id DESC LIMIT 1', [game]);
-    if (activeRows[0]) {
-        return activeRows[0].period;
-    }
-
-    const [latestRows] = await connection.query('SELECT period FROM wingo WHERE game = ? ORDER BY id DESC LIMIT 1', [game]);
-    const timeNow = Date.now();
-
-    if (!latestRows[0]) {
-        const basePeriod = makeInitialPeriod();
-        await connection.execute('INSERT INTO wingo SET period = ?, game = ?, amount = ?, status = ?, time = ?', [basePeriod, game, Math.floor(Math.random() * 10), 1, timeNow]);
-        await connection.execute('INSERT INTO wingo SET period = ?, game = ?, amount = ?, status = ?, time = ?', [basePeriod + 1, game, 0, 0, timeNow]);
-        return String(basePeriod + 1);
-    }
-
-    const nextPeriod = Number(latestRows[0].period) + 1;
-    await connection.execute('INSERT INTO wingo SET period = ?, game = ?, amount = ?, status = ?, time = ?', [nextPeriod, game, 0, 0, timeNow]);
-    return String(nextPeriod);
-}
+const ensureWinGoRound = (game) => ensureGameRound('wingo', game);
 
 const rosesPlus = async (auth, money) => {
     const [level] = await connection.query('SELECT * FROM level ');
@@ -255,7 +232,7 @@ const betWinGo = async (req, res) => {
     if (typeid == 5) gameJoin = 'wingo5';
     if (typeid == 10) gameJoin = 'wingo10';
     await ensureWinGoRound(gameJoin);
-    const [winGoNow] = await connection.query(`SELECT period FROM wingo WHERE status = 0 AND game = '${gameJoin}' ORDER BY id DESC LIMIT 1 `);
+    const [winGoNow] = await connection.query(`SELECT period FROM wingo WHERE status = 0 AND game = '${gameJoin}' ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
     const [user] = await connection.query('SELECT `phone`, `code`, `invite`, `level`, `money` FROM users WHERE token = ? AND veri = 1  LIMIT 1 ', [auth]);
     if (!winGoNow[0] || !user[0] || !isNumber(x) || !isNumber(money)) {
         return res.status(200).json({
@@ -494,7 +471,7 @@ const listOrderOld = async (req, res) => {
         LIMIT ?, ?
     `, [game, offset, limit]);
     const [[wingoAll]] = await connection.query(`SELECT COUNT(DISTINCT period) AS total FROM wingo WHERE status != 0 AND game = ?`, [game]);
-    const [period] = await connection.query(`SELECT period FROM wingo WHERE status = 0 AND game = '${game}' ORDER BY id DESC LIMIT 1 `);
+    const [period] = await connection.query(`SELECT period FROM wingo WHERE status = 0 AND game = '${game}' ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
     if (!wingo[0]) {
         return res.status(200).json({
             code: 0,
@@ -613,11 +590,8 @@ const addWinGo = async (game) => {
         if (game == 5) join = 'wingo5';
         if (game == 10) join = 'wingo10';
 
-        const [winGoNow] = await connection.query(`SELECT period FROM wingo WHERE status = 0 AND game = "${join}" ORDER BY id DESC LIMIT 1 `);
-        if (!winGoNow[0]) {
-            await ensureWinGoRound(join);
-            return;
-        }
+        await ensureWinGoRound(join);
+        const [winGoNow] = await connection.query(`SELECT period FROM wingo WHERE status = 0 AND game = "${join}" ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
         const [setting] = await connection.query('SELECT * FROM `admin` ');
         let period = winGoNow[0].period; // cầu hiện tại
         let amount = Math.floor(Math.random() * 10);
@@ -724,8 +698,6 @@ const addWinGo = async (game) => {
         }
 
         // xanh đỏ tím
-        let timeNow = Date.now();
-
         let nextResult = '';
         if (game == 1) nextResult = setting[0]?.wingo1 || '-1';
         if (game == 3) nextResult = setting[0]?.wingo3 || '-1';
@@ -753,14 +725,7 @@ const addWinGo = async (game) => {
             // console.log("Updating result in wingo table: ", result);
             await connection.execute(`UPDATE wingo SET amount = ?,status = ? WHERE period = ? AND game = "${join}"`, [result, 1, period]);
         }
-        const sql = `INSERT INTO wingo SET 
-        period = ?,
-        amount = ?,
-        game = ?,
-        status = ?,
-        time = ?`;
-
-        await connection.execute(sql, [Number(period) + 1, 0, join, 0, timeNow]);
+        await ensureWinGoRound(join);
 
         if (game == 1) join = 'wingo1';
         if (game == 3) join = 'wingo3';
@@ -785,7 +750,7 @@ const handlingWinGo1P = async (typeid) => {
     if (typeid == 5) game = 'wingo5';
     if (typeid == 10) game = 'wingo10';
 
-    const [winGoNow] = await connection.query(`SELECT * FROM wingo WHERE status != 0 AND game = '${game}' ORDER BY id DESC LIMIT 1 `);
+    const [winGoNow] = await connection.query(`SELECT * FROM wingo WHERE status != 0 AND game = '${game}' ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
     if (!winGoNow[0]) {
         await ensureWinGoRound(game);
         return;

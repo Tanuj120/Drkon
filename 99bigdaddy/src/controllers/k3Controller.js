@@ -1,4 +1,5 @@
 import connection from "../config/connectDB.js";
+import { ensureGameRound } from "../utils/gamePeriod.js";
 import ensureGameSchema from "../utils/ensureGameSchema.js";
 import dotenv from 'dotenv';
 dotenv.config();
@@ -41,31 +42,7 @@ function timerJoin(params = '', addHours = 0) {
         return years + '-' + months + '-' + days + ' ' + hours + ':' + minutes + ':' + seconds + ' ' + ampm;
     }
 
-const makeInitialPeriod = () => {
-    const date = new Date();
-    return Number(`${formateT(date.getFullYear())}${formateT(date.getMonth() + 1)}${formateT(date.getDate())}10000`);
-}
-
-const ensureK3Round = async (game) => {
-    const [activeRows] = await connection.query('SELECT period FROM k3 WHERE status = 0 AND game = ? ORDER BY id DESC LIMIT 1', [game]);
-    if (activeRows[0]) {
-        return activeRows[0].period;
-    }
-
-    const [latestRows] = await connection.query('SELECT period FROM k3 WHERE game = ? ORDER BY id DESC LIMIT 1', [game]);
-    const timeNow = Date.now();
-
-    if (!latestRows[0]) {
-        const basePeriod = makeInitialPeriod();
-        await connection.execute('INSERT INTO k3 SET period = ?, result = ?, game = ?, status = ?, time = ?', [basePeriod, makeid(3), game, 1, timeNow]);
-        await connection.execute('INSERT INTO k3 SET period = ?, result = ?, game = ?, status = ?, time = ?', [basePeriod + 1, '0', game, 0, timeNow]);
-        return String(basePeriod + 1);
-    }
-
-    const nextPeriod = Number(latestRows[0].period) + 1;
-    await connection.execute('INSERT INTO k3 SET period = ?, result = ?, game = ?, status = ?, time = ?', [nextPeriod, '0', game, 0, timeNow]);
-    return String(nextPeriod);
-}
+const ensureK3Round = (game) => ensureGameRound('k3', game);
 
 const rosesPlus = async (auth, money) => {
     const [level] = await connection.query('SELECT * FROM level ');
@@ -153,7 +130,7 @@ const betK3 = async (req, res) => {
         // }
 
         await ensureK3Round(Number(game));
-        const [k3Now] = await connection.query(`SELECT period FROM k3 WHERE status = 0 AND game = ${game} ORDER BY id DESC LIMIT 1 `);
+        const [k3Now] = await connection.query(`SELECT period FROM k3 WHERE status = 0 AND game = ${game} ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
         const [user] = await connection.query('SELECT `phone`, `code`, `invite`, `level`, `money` FROM users WHERE token = ? AND veri = 1  LIMIT 1 ', [auth]);
         if (k3Now.length < 1 || user.length < 1) {
             return res.status(200).json({
@@ -333,12 +310,8 @@ const addK3 = async (game) => {
         if (game == 10) join = 'k3d10';
 
         let result2 = makeid(3);
-        let timeNow = Date.now();
-        let [k5D] = await connection.query(`SELECT period FROM k3 WHERE status = 0 AND game = ${game} ORDER BY id DESC LIMIT 1 `);
-        if (!k5D[0]) {
-            await ensureK3Round(game);
-            return;
-        }
+        await ensureK3Round(game);
+        let [k5D] = await connection.query(`SELECT period FROM k3 WHERE status = 0 AND game = ${game} ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
         const [setting] = await connection.query('SELECT * FROM `admin` ');
         let period = k5D[0].period;
 
@@ -367,8 +340,7 @@ const addK3 = async (game) => {
             result = arr[0];
             await connection.execute(`UPDATE k3 SET result = ?,status = ? WHERE period = ? AND game = ${game}`, [result, 1, period]);
         }
-        const sql = `INSERT INTO k3 SET period = ?, result = ?, game = ?, status = ?, time = ?`;
-        await connection.execute(sql, [Number(period) + 1, 0, game, 0, timeNow]);
+        await ensureK3Round(game);
 
         if (game == 1) join = 'k3d';
         if (game == 3) join = 'k3d3';
@@ -383,7 +355,7 @@ const addK3 = async (game) => {
 }
 
 async function funHanding(game) {
-    const [k5d] = await connection.query(`SELECT * FROM k3 WHERE status != 0 AND game = ${game} ORDER BY id DESC LIMIT 1 `);
+    const [k5d] = await connection.query(`SELECT * FROM k3 WHERE status != 0 AND game = ${game} ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
     if (!k5d[0]) {
         await ensureK3Round(game);
         return;
@@ -1117,7 +1089,7 @@ const listOrderOld = async (req, res) => {
         LIMIT ?, ?
     `, [game, offset, limit]);
     const [[k5dAll]] = await connection.query(`SELECT COUNT(DISTINCT period) AS total FROM k3 WHERE status != 0 AND game = ?`, [game]);
-    const [period] = await connection.query(`SELECT period FROM k3 WHERE status = 0 AND game = '${game}' ORDER BY id DESC LIMIT 1 `);
+    const [period] = await connection.query(`SELECT period FROM k3 WHERE status = 0 AND game = '${game}' ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
     if (k5d.length == 0) {
         return res.status(200).json({
             code: 0,
