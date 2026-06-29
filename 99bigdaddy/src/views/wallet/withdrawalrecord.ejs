@@ -7374,6 +7374,10 @@
                     let seconds = formateT(date.getSeconds());
                     return years + '-' + months + '-' + days + ' ' + hours + '-' + minutes + '-' + seconds;
                 }
+                function formatWithdrawalAmount(value) {
+                    const amount = Number(value);
+                    return Number.isFinite(amount) ? amount.toFixed(2) : '0.00';
+                }
                 function loads(datas) {
                     let html = datas.map((data) => {
                         return `
@@ -7387,12 +7391,12 @@
                 </div>
                 <div class="info-row">
                     <div class="info-label">Balance</div>
-                    <div class="info-value" style="color: rgb(107, 190, 88);">₹ ${data.money}.00</div>
+                    <div class="info-value" style="color: rgb(107, 190, 88);">₹ ${formatWithdrawalAmount(data.money)}</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Type</div>
                     <div class="info-value">
-                        BankCard 
+                        Bep20 Network
                         <img src="/images/king (10).png" class="bank-card-icon" />
                     </div>
                 </div>
