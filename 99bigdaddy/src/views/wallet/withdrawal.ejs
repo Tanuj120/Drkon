@@ -7698,7 +7698,7 @@
             </div>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="/plugins/jquery/jquery.min.js"></script>
     <script src="/js/client.js"></script>
     <script>
         $('.txtBox .van-image').click(function (e) {
@@ -7708,6 +7708,7 @@
                 $(this).removeClass('action block-click');
             }, 2500);
         });
+        let hasWithdrawalAddress = false;
         $.ajax({
             type: "POST",
             url: "/api/webapi/check/Info",
@@ -7718,6 +7719,7 @@
                 console.log(user);
                 $('.bankBox .box .item:eq(1) div:eq(1)').html(`2. Remaining Betting Amount<br>For Withdrawal: ₹ ${response.result}`);
                 if (!response.datas[0]) return;
+                hasWithdrawalAddress = true;
                 let data = response.datas[0];
                 $('.conBox .list').append(
                     `
@@ -7797,34 +7799,56 @@
 
         setWithdrawNote();
 
-        $('#withdraw_submit_button').click(function (e) {
+        const withdrawSubmitButton = $('#withdraw_submit_button');
+
+        withdrawSubmitButton.click(function (e) {
             e.preventDefault();
-            let money = Number(withdrawInrInput.val().trim());
-            let password = $('.pw-input').val().trim();
-            if (money && password && money >= minimumWithdrawInr) {
-                $.ajax({
-                    type: "POST",
-                    url: "/api/webapi/withdrawal",
-                    data: {
-                        money: formatInr(money),
-                        password: password,
-                    },
-                    dataType: "json",
-                    success: function (response) {
-                        $(this).addClass('block-click');
-                        if (response.status == true) {
-                            $('.money').text("₹" + response.money + '.00');
-                        }
-                        alertMess(response.message, $(this));
-                    }
-                });
-            } else if (!money || !password) {
-                $(this).addClass('block-click');
-                alertMess('Please Enter Complete Information', $(this));
-            } else {
-                $(this).addClass('block-click');
-                alertMess('Withdrawal Amount Range: <br>1000 - Unlimited', $(this));
+            const money = Number(withdrawInrInput.val().trim());
+            const password = $('.pw-input').val().trim();
+            if (!hasWithdrawalAddress) {
+                alertMess('Please add your USDT address first', withdrawSubmitButton);
+                return;
             }
+            if (!money || !password) {
+                alertMess('Please enter the withdrawal amount and password', withdrawSubmitButton);
+                return;
+            }
+            if (money < minimumWithdrawInr) {
+                alertMess('Minimum withdrawal amount is ₹1000', withdrawSubmitButton);
+                return;
+            }
+
+            withdrawSubmitButton.addClass('block-click').prop('disabled', true);
+            $('.Loading').show();
+            $.ajax({
+                type: "POST",
+                url: "/api/webapi/withdrawal",
+                data: {
+                    money: formatInr(money),
+                    password: password,
+                },
+                dataType: "json",
+                timeout: 20000,
+                success: function (response) {
+                    if (response.status === true) {
+                        $('.money').text("₹" + Number(response.money || 0).toFixed(2));
+                        withdrawInrInput.val('');
+                        withdrawUsdtInput.val('');
+                        $('.pw-input').val('');
+                    }
+                    alertMess(response.message || 'Withdrawal request failed', withdrawSubmitButton);
+                },
+                error: function (xhr) {
+                    const message = xhr.responseJSON?.message || (xhr.status === 0
+                        ? 'Network error. Please check your connection and try again.'
+                        : 'Withdrawal request failed. Please try again.');
+                    alertMess(message, withdrawSubmitButton);
+                },
+                complete: function () {
+                    $('.Loading').hide();
+                    withdrawSubmitButton.removeClass('block-click').prop('disabled', false);
+                }
+            });
         });
     </script>
 </body>

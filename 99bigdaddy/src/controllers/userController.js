@@ -17,7 +17,52 @@ const LEVEL_INCOME_PERCENTAGES = [5, 3, 2, 1, 1, 1, 1, 1];
 const LEVEL_INCOME_PACKAGE_DAYS = 90;
 const REFERRAL_MAX_LEVEL = 8;
 
+let withdrawalSchemaPromise;
+let withdrawalTimeUsesDate = false;
+
 const formatMoney = (value) => Number(Number(value || 0).toFixed(2));
+
+const getLocalDateKey = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+const ensureWithdrawalSchema = async () => {
+    if (!withdrawalSchemaPromise) {
+        withdrawalSchemaPromise = (async () => {
+            await addColumnIfMissing('withdraw', 'id_order', 'ALTER TABLE withdraw ADD COLUMN id_order VARCHAR(64) DEFAULT NULL');
+            await addColumnIfMissing('withdraw', 'stk', 'ALTER TABLE withdraw ADD COLUMN stk VARCHAR(191) DEFAULT NULL');
+            await addColumnIfMissing('withdraw', 'name_bank', 'ALTER TABLE withdraw ADD COLUMN name_bank VARCHAR(191) DEFAULT NULL');
+            await addColumnIfMissing('withdraw', 'ifsc', 'ALTER TABLE withdraw ADD COLUMN ifsc VARCHAR(191) DEFAULT NULL');
+            await addColumnIfMissing('withdraw', 'name_user', 'ALTER TABLE withdraw ADD COLUMN name_user VARCHAR(191) DEFAULT NULL');
+            const [timeColumns] = await connection.query(
+                'SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+                ['withdraw', 'time']
+            );
+            withdrawalTimeUsesDate = ['date', 'datetime', 'timestamp'].includes(String(timeColumns?.[0]?.DATA_TYPE || '').toLowerCase());
+        })().catch((error) => {
+            withdrawalSchemaPromise = null;
+            throw error;
+        });
+    }
+    return withdrawalSchemaPromise;
+}
+
+const getRemainingBetAmount = async (db, phone) => {
+    const [rechargeRows] = await db.query(
+        'SELECT COALESCE(SUM(money), 0) AS total FROM recharge WHERE phone = ? AND status = 1',
+        [phone]
+    );
+    const betTables = ['minutes_1', 'result_5d', 'result_k3'];
+    let totalBet = 0;
+    for (const tableName of betTables) {
+        const [rows] = await db.query(`SELECT COALESCE(SUM(money), 0) AS total FROM ${tableName} WHERE phone = ?`, [phone]);
+        totalBet += Number(rows?.[0]?.total || 0);
+    }
+    return formatMoney(Math.max(Number(rechargeRows?.[0]?.total || 0) - totalBet, 0));
+}
 
 const getFixedDepositPlan = (days) => {
     return FIXED_DEPOSIT_PLANS.find((plan) => Number(plan.days) === Number(days));
@@ -1533,62 +1578,15 @@ const infoUserBank = async (req, res) => {
         })
     }
     const [user] = await connection.query('SELECT `phone`, `code`, `invite`, `money` FROM users WHERE `token` = ? ', [auth]);
-    let userInfo = user[0];
-    if (!user) {
+    if (!user.length) {
         return res.status(200).json({
             message: 'Failed',
             status: false,
             timeStamp: timeNow,
         });
     };
-    function formateT(params) {
-        let result = (params < 10) ? "0" + params : params;
-        return result;
-    }
-
-    function timerJoin(params = '', addHours = 0) {
-        let date = '';
-        if (params) {
-            date = new Date(Number(params));
-        } else {
-            date = new Date();
-        }
-
-        date.setHours(date.getHours() + addHours);
-
-        let years = formateT(date.getFullYear());
-        let months = formateT(date.getMonth() + 1);
-        let days = formateT(date.getDate());
-
-        let hours = date.getHours() % 12;
-        hours = hours === 0 ? 12 : hours;
-        let ampm = date.getHours() < 12 ? "AM" : "PM";
-
-        let minutes = formateT(date.getMinutes());
-        let seconds = formateT(date.getSeconds());
-
-        return years + '-' + months + '-' + days + ' ' + hours + ':' + minutes + ':' + seconds + ' ' + ampm;
-    }
-    let date = new Date().getTime();
-    let checkTime = timerJoin(date);
-    const [recharge] = await connection.query('SELECT * FROM recharge WHERE phone = ? AND status = 1', [userInfo.phone]);
-    const [minutes_1] = await connection.query('SELECT * FROM minutes_1 WHERE phone = ?', [userInfo.phone]);
-    let total = 0;
-    recharge.forEach((data) => {
-        total += parseFloat(data.money);
-    });
-    let total2 = 0;
-    minutes_1.forEach((data) => {
-        total2 += parseFloat(data.money);
-    });
-    let fee = 0;
-    minutes_1.forEach((data) => {
-        fee += parseFloat(data.fee);
-    });
-
-    // result = Math.max(result, 0);
-    let result = 0;
-    if (total - total2 > 0) result = total - total2 - fee;
+    const userInfo = user[0];
+    const result = await getRemainingBetAmount(connection, userInfo.phone);
 
     const [userBank] = await connection.query('SELECT * FROM user_bank WHERE phone = ? ', [userInfo.phone]);
     return res.status(200).json({
@@ -1602,140 +1600,100 @@ const infoUserBank = async (req, res) => {
 }
 
 const withdrawal3 = async (req, res) => {
-    let auth = req.cookies.auth;
-    let money = req.body.money;
-    let password = req.body.password;
-    if (!auth || !money || !password || Number(money) < MINIMUM_WITHDRAW_AMOUNT) {
+    const auth = req.cookies.auth;
+    const money = formatMoney(req.body.money);
+    const password = String(req.body.password || '').trim();
+    if (!auth || !Number.isFinite(money) || money < MINIMUM_WITHDRAW_AMOUNT || !password) {
         return res.status(200).json({
             message: 'Minimum withdrawal amount is 1000',
             status: false,
             timeStamp: timeNow,
-        })
-    }
-    const [user] = await connection.query('SELECT `phone`, `code`,`invite`, `money` FROM users WHERE `token` = ? AND password = ?', [auth, md5(password)]);
-
-    if (user.length == 0) {
-        return res.status(200).json({
-            message: 'incorrect password',
-            status: false,
-            timeStamp: timeNow,
         });
-    };
-    let userInfo = user[0];
-    const date = new Date();
-    let id_time = date.getUTCFullYear() + '' + date.getUTCMonth() + 1 + '' + date.getUTCDate();
-    let id_order = Math.floor(Math.random() * (99999999999999 - 10000000000000 + 1)) + 10000000000000;
-
-    function formateT(params) {
-        let result = (params < 10) ? "0" + params : params;
-        return result;
     }
-
-    function timerJoin(params = '', addHours = 0) {
-        let date = '';
-        if (params) {
-            date = new Date(Number(params));
-        } else {
-            date = new Date();
+    let transaction;
+    try {
+        await ensureWithdrawalSchema();
+        transaction = await getTransactionClient();
+        await transaction.begin();
+        const db = transaction.db;
+        const [users] = await db.query(
+            'SELECT `phone`, `money` FROM users WHERE `token` = ? AND `password` = ? AND `status` = 1 AND `veri` = 1 FOR UPDATE',
+            [auth, md5(password)]
+        );
+        if (!users.length) {
+            await transaction.rollback();
+            return res.status(200).json({ message: 'Incorrect password', status: false, timeStamp: Date.now() });
         }
 
-        date.setHours(date.getHours() + addHours);
+        const userInfo = users[0];
+        const [userBanks] = await db.query('SELECT * FROM user_bank WHERE phone = ? LIMIT 1', [userInfo.phone]);
+        if (!userBanks.length) {
+            await transaction.rollback();
+            return res.status(200).json({ message: 'Please add your USDT address first', status: false, timeStamp: Date.now() });
+        }
+        if (Number(userInfo.money) < money) {
+            await transaction.rollback();
+            return res.status(200).json({ message: 'The balance is not enough to fulfill the request', status: false, timeStamp: Date.now() });
+        }
 
-        let years = formateT(date.getFullYear());
-        let months = formateT(date.getMonth() + 1);
-        let days = formateT(date.getDate());
+        const dateKey = getLocalDateKey();
+        const [dailyRows] = await db.query(
+            'SELECT COUNT(*) AS count FROM withdraw WHERE phone = ? AND status IN (0, 1) AND CAST(today AS CHAR) LIKE ?',
+            [userInfo.phone, `${dateKey}%`]
+        );
+        if (Number(dailyRows?.[0]?.count || 0) >= 3) {
+            await transaction.rollback();
+            return res.status(200).json({ message: 'You can only make 3 withdrawals per day', status: false, timeStamp: Date.now() });
+        }
 
-        let hours = date.getHours() % 12;
-        hours = hours === 0 ? 12 : hours;
-        let ampm = date.getHours() < 12 ? "AM" : "PM";
-
-        let minutes = formateT(date.getMinutes());
-        let seconds = formateT(date.getSeconds());
-
-        return years + '-' + months + '-' + days + ' ' + hours + ':' + minutes + ':' + seconds + ' ' + ampm;
-    }
-    let dates = new Date().getTime();
-    let checkTime = timerJoin(dates);
-    const [withdraw_set] = await connection.query('SELECT * FROM withdraw WHERE phone = ? and status = 1', [userInfo.phone]);
-    const [recharge] = await connection.query('SELECT * FROM recharge WHERE phone = ? AND status = 1', [userInfo.phone]);
-    const [minutes_1] = await connection.query('SELECT * FROM minutes_1 WHERE phone = ?', [userInfo.phone]);
-    let total = 0;
-    withdraw_set.forEach((data) => {
-        total += parseFloat(data.money);
-    });
-    console.log("Total withdraw: ", total);
-    let total2 = 0;
-    minutes_1.forEach((data) => {
-        total2 += parseFloat(data.get);
-    });
-    console.log("Total gameplay: ", total2);
-    let result = (total2 - total) - money;
-
-    const [user_bank] = await connection.query('SELECT * FROM user_bank WHERE `phone` = ?', [userInfo.phone]);
-    const [withdraw] = await connection.query('SELECT * FROM withdraw WHERE `phone` = ? AND today = ?', [userInfo.phone, checkTime]);
-    if (user_bank.length != 0) {
-        if (withdraw.length < 3) {
-            if (userInfo.money - money >= 0) {
-                console.log("result:", result);
-                if (result >= 0) {
-                    if (money - (total2 - total) > 0) {
-                        return res.status(200).json({
-                            message: 'The total bet is not enough to fulfill the request',
-                            status: false,
-                            timeStamp: timeNow,
-                        });
-                    } else {
-                        let infoBank = user_bank[0];
-                        const sql = `INSERT INTO withdraw SET 
-                    id_order = ?,
-                    phone = ?,
-                    money = ?,
-                    stk = ?,
-                    name_bank = ?,
-                    ifsc = ?,
-                    name_user = ?,
-                    status = ?,
-                    today = ?,
-                    time = ?`;
-                        await connection.execute(sql, [id_time + '' + id_order, userInfo.phone, money, infoBank.stk, infoBank.name_bank, infoBank.email, infoBank.name_user, 0, checkTime, dates]);
-                        await connection.query('UPDATE users SET money = money - ? WHERE phone = ? ', [money, userInfo.phone]);
-                        return res.status(200).json({
-                            message: 'Withdrawal successful',
-                            status: true,
-                            money: userInfo.money - money,
-                            timeStamp: timeNow,
-                        });
-                    }
-                } else {
-                    console.log("niche wale ka wajah se ho rha")
-                    return res.status(200).json({
-                        message: 'The total bet is not enough to fulfill the request',
-                        status: false,
-                        timeStamp: timeNow,
-                    });
-                }
-            } else {
-                return res.status(200).json({
-                    message: 'The balance is not enough to fulfill the request',
-                    status: false,
-                    timeStamp: timeNow,
-                });
-            }
-        } else {
+        const remainingBetAmount = await getRemainingBetAmount(db, userInfo.phone);
+        if (remainingBetAmount > 0) {
+            await transaction.rollback();
             return res.status(200).json({
-                message: 'You can only make 3 withdrawals per day',
+                message: `Please complete the remaining betting amount of ₹${remainingBetAmount.toFixed(2)}`,
                 status: false,
-                timeStamp: timeNow,
+                timeStamp: Date.now(),
             });
         }
-    } else {
-        return res.status(200).json({
-            message: 'Please link your bank first',
-            status: false,
-            timeStamp: timeNow,
-        });
-    }
 
+        const now = Date.now();
+        const orderId = `${dateKey.replace(/-/g, '')}${now}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+        const [balanceResult] = await db.query(
+            'UPDATE users SET money = money - ? WHERE phone = ? AND money >= ?',
+            [money, userInfo.phone, money]
+        );
+        if (!balanceResult.affectedRows) {
+            await transaction.rollback();
+            return res.status(200).json({ message: 'The balance is not enough to fulfill the request', status: false, timeStamp: now });
+        }
+
+        const userBank = userBanks[0];
+        await db.execute(
+            `INSERT INTO withdraw (id_order, phone, money, stk, name_bank, ifsc, name_user, status, today, time)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [orderId, userInfo.phone, money, userBank.stk, userBank.name_bank, userBank.email || '', userBank.name_user, 0, dateKey, withdrawalTimeUsesDate ? new Date(now) : now]
+        );
+        await transaction.commit();
+        return res.status(200).json({
+            message: 'Withdrawal request submitted successfully',
+            status: true,
+            money: formatMoney(Number(userInfo.money) - money),
+            orderId,
+            timeStamp: now,
+        });
+    } catch (error) {
+        if (transaction) {
+            try { await transaction.rollback(); } catch (rollbackError) {}
+        }
+        console.error('Withdrawal request failed:', error);
+        return res.status(500).json({
+            message: 'Withdrawal request failed. Please try again.',
+            status: false,
+            timeStamp: Date.now(),
+        });
+    } finally {
+        transaction?.release();
+    }
 }
 const transfer = async (req, res) => {
     let auth = req.cookies.auth;
