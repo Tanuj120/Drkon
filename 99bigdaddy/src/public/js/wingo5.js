@@ -186,13 +186,7 @@ socket.on("data-server", function (msg) {
                 myModalheader.innerHTML = "Congratulation 🥇";
                 myModal_result.innerHTML = "WIN :" + gameGet.toFixed(2);
               }
-              let idProductStr = firstGame.id_product.toString();
-              let stageStr = firstGame.stage.toString();
-              let idProductPart = idProductStr.substring(0, 8);
-              let stagePart = stageStr.slice(-5);
-              let finalString = idProductPart + stagePart;
-
-              myModal_result_Period.innerHTML = "Period : 5min " + finalString;
+              myModal_result_Period.innerHTML = "Period : 5min " + firstGame.stage;
 
               let color;
               let type;
@@ -811,8 +805,7 @@ function showListOrder(list_orders, x) {
     return (htmls += `
                       <div data-v-a9660e98="" class="c-tc item van-row">
                           <div data-v-a9660e98="" class="van-col van-col--8">
-                              <div data-v-a9660e98="" class="c-tc goItem">${currentDate}${parseInt(list_orders.period % 100000)
-      }</div>
+                              <div data-v-a9660e98="" class="c-tc goItem">${list_orders.period}</div>
                           </div>
                           <div data-v-a9660e98="" class="van-col van-col--5">
                           <div data-v-a9660e98="" class="c-tc goItem">
@@ -1121,8 +1114,7 @@ function showListOrder2(list_orders, x) {
                                   </div>
                                   <div data-v-a9660e98="" class="li c-row c-row-between c-row-middle">
                                       <div data-v-a9660e98="">Lottery Period</div>
-                                          <div data-v-a9660e98="">${parseInt((list_orders.id_product) / 1000000000000000)}${parseInt((list_orders.stage) % 100000)
-      }</div>
+                                          <div data-v-a9660e98="">${list_orders.stage}</div>
                                       </div>
                                       <div data-v-a9660e98="" class="li c-row c-row-between c-row-middle">
                                           <div data-v-a9660e98="">Order Amount</div>

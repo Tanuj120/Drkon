@@ -129,7 +129,7 @@ function GetMyEmerdList(list_orders) {
     }
     let htmls = "";
     let result = list_orders.map((list_order) => {
-        const orderNumber = list_order.id_product || list_order.stage || '';
+        const orderNumber = list_order.stage || list_order.id_product || '';
         const displayAmount = Number((list_order.status == 1) ? list_order.get : list_order.price);
         const safeAmount = Number.isFinite(displayAmount) ? displayAmount.toFixed(2) : '0.00';
         return (htmls += `

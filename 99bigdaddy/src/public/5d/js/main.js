@@ -606,7 +606,7 @@ function GetMyEmerdList(datas) {
     }
     let htmls = "";
     let result = datas.map((data) => {
-        const orderNumber = data.id_product || data.stage || '';
+        const orderNumber = data.stage || data.id_product || '';
         const displayAmount = Number((data.status == 1) ? data.get : data.price);
         const safeAmount = Number.isFinite(displayAmount) ? displayAmount.toFixed(2) : '0.00';
         let arr = formatHistoryDigits(data.result).split('');
