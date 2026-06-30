@@ -1,12 +1,5 @@
-import connection from '../config/connectDB.js';
-import dotenv from 'dotenv';
-dotenv.config();
-
 const sendMessageAdmin = (io) => {
     io.on('connection', (socket) => {
-        socket.on('data-server', (msg) => {
-            io.emit('data-server', msg);
-        });
         socket.on('data-server_2', (msg) => {
             io.emit('data-server_2', msg);
         });

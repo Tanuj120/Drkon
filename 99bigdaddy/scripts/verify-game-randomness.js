@@ -57,6 +57,9 @@ for (const [functionName, emitMarker, settlementMarker] of [
     assert.ok(functionSource.indexOf(emitMarker) < functionSource.indexOf(settlementMarker), `${functionName} broadcasts after settlement`);
 }
 
+const socketSource = await readFile('src/controllers/socketIoController.js', 'utf8');
+assert.ok(!/socket\.on\(['"]data-server['"]/.test(socketSource), 'Browsers can impersonate official game result broadcasts');
+
 console.log('Wingo counts:', wingoCounts.join(','));
 console.log('K3 counts:', k3Counts.join(','));
 console.log('5D counts:', fiveDCounts.join(','));
