@@ -484,7 +484,7 @@ const login = async (req, res) => {
                 });
             } else {
                 return res.status(200).json({
-                    message: 'Account has been locked',
+                    message: 'Site is under maintainance mode',
                     status: false
                 });
             }
