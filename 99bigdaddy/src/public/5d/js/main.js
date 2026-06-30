@@ -192,7 +192,7 @@ function callListOrder(silent = false) {
 setInterval(() => {
     const game = Number($('html').attr('data-dpr'));
     if (pageno === 0 && $('#number_result').attr('data-select') === 'all' && GameHistoryClient.shouldPollRound(game)) callListOrder(true);
-}, 2000);
+}, 1000);
 
 callListOrder();
 

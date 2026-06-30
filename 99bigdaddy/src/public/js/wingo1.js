@@ -101,7 +101,7 @@ function loadWingoHistory(targetIndex = 0, offset = 0, silent = false) {
 }
 setInterval(() => {
   if (pageno === 0 && GameHistoryClient.shouldPollRound(1)) loadWingoHistory(0, 0, true);
-}, 2000);
+}, 1000);
 if (socket) {
 socket.on("data-server", function (msg) {
   if (!msg || !Array.isArray(msg.data) || msg.data.length < 2) return;

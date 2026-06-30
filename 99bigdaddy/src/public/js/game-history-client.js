@@ -6,6 +6,7 @@
     function post(options) {
         const requestKey = options.key || options.url;
         const previousRequest = pendingRequests.get(requestKey);
+        if (previousRequest && options.silent) return previousRequest;
         if (previousRequest) previousRequest.abort();
 
         let retriesRemaining = Number.isInteger(options.retries) ? options.retries : 1;
@@ -42,7 +43,7 @@
                     setTimeout(send, 400);
                     return;
                 }
-                if (typeof options.error === 'function') options.error(xhr, status);
+                if (!options.silent && typeof options.error === 'function') options.error(xhr, status);
                 finish();
             });
 
