@@ -341,7 +341,7 @@ function cownDownTimer() {
         if (minute >= 0 && seconds1 >= 1 && seconds2 <= 9) {
             $('.mark-box').hide();
         }
-    }, 0);
+    }, 250);
     setInterval(function () {
         let now = new Date().getTime();//.toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"});
         let distance = countDownDate - now;

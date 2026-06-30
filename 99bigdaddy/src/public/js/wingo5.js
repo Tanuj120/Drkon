@@ -95,6 +95,11 @@ if (socket) {
 socket.on("data-server", function (msg) {
   if (!msg || !Array.isArray(msg.data) || msg.data.length < 2) return;
   if (msg.data[0].game != 'wingo5') return;
+  if (msg.settled === false) {
+    $(".time-box .info .number").text(msg.data[0].period);
+    loadWingoHistory(0, 0);
+    return;
+  }
   $(".Loading").fadeIn(0);
   setTimeout(() => {
     let data1 = msg.data[0]; // lấy ra cầu mới nhất
@@ -262,7 +267,7 @@ socket.on("data-server", function (msg) {
         $(".num span").text(`${data.data.money_user}`);
       });
     $(".Loading").fadeOut(0);
-  }, 1000);
+  }, 0);
 });
 }
 // $('body').click(function (e) {
@@ -1606,7 +1611,7 @@ window.onload = function () {
       } else {
         $(".box .mark-box ").css("display", "none");
       }
-    }, 0);
+    }, 250);
   }
 
   cownDownTimer();

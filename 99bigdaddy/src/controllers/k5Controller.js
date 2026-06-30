@@ -2,6 +2,7 @@ import e from "express";
 import connection from "../config/connectDB.js";
 import { ensureGameRound } from "../utils/gamePeriod.js";
 import creditGamePayout from "../utils/creditGamePayout.js";
+import { randomDigitString } from "../utils/fairRandom.js";
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -376,7 +377,35 @@ function makeid(length) {
     return result;
 }
 
-const add5D = async(game) => {
+const add5D = async (game) => {
+    try {
+        const gameNumber = Number(game);
+        if (![1, 3, 5, 10].includes(gameNumber)) return null;
+
+        await ensure5DRound(gameNumber);
+        const [rounds] = await connection.query(
+            'SELECT period FROM `5d` WHERE status = 0 AND game = ? ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1',
+            [gameNumber]
+        );
+        if (!rounds[0]) return null;
+
+        const period = String(rounds[0].period);
+        const result = randomDigitString(5, 0, 9);
+        const [closeResult] = await connection.execute(
+            'UPDATE `5d` SET result = ?, status = 1 WHERE period = ? AND game = ? AND status = 0',
+            [result, period, gameNumber]
+        );
+        if (!closeResult?.affectedRows) return null;
+
+        await ensure5DRound(gameNumber);
+        return period;
+    } catch (error) {
+        console.error('5D fair round close failed:', error);
+        return null;
+    }
+};
+
+const add5DLegacy = async(game) => {
     try {
         let join = '';
         if (game == 1) join = 'k5d'; 

@@ -10,6 +10,7 @@
         "start": "node src/server.js",
         "start:local": "node scripts/start-local.js",
         "verify:games": "node scripts/verify-game-round-integrity.js",
+        "verify:randomness": "node scripts/verify-game-randomness.js",
         "dev": "nodemon src/server.js",
         "import-schema": "node importSchema.js",
         "create-user": "node createUser.js"

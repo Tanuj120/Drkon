@@ -32,6 +32,11 @@ socket.on("data-server-5d", function (msg) {
         }
     }
 });
+socket.on("game-settled", function (msg) {
+    if (!msg || msg.type !== '5d' || String(msg.game) !== String($('html').attr('data-dpr'))) return;
+    reload_money();
+    if ($('#number_result').attr('data-select') !== 'all') showMeJoin();
+});
 
 const issetVolume = localStorage.getItem('volume');
 if (issetVolume == null) {
@@ -318,7 +323,7 @@ function cownDownTimer() {
         if (minute >= 0 && seconds1 >= 1 && seconds2 <= 9) {
             $('.minH .mark-box').hide();
         }
-    }, 0);
+    }, 250);
     setInterval(function () {
         let now = new Date().getTime();
         let distance = countDownDate - now;

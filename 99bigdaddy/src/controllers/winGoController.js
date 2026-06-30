@@ -2,6 +2,7 @@ import connection from "../config/connectDB.js";
 import { ensureGameRound } from "../utils/gamePeriod.js";
 import ensureGameSchema from "../utils/ensureGameSchema.js";
 import creditGamePayout from "../utils/creditGamePayout.js";
+import { randomInteger } from "../utils/fairRandom.js";
 // import jwt from 'jsonwebtoken'
 // import md5 from "md5";
 // import e from "express";
@@ -584,6 +585,35 @@ const GetMyEmerdList = async (req, res) => {
 
 
 const addWinGo = async (game) => {
+    try {
+        const gameNames = { 1: 'wingo', 3: 'wingo3', 5: 'wingo5', 10: 'wingo10' };
+        const gameName = gameNames[Number(game)];
+        if (!gameName) return null;
+
+        await ensureWinGoRound(gameName);
+        const [rounds] = await connection.query(
+            'SELECT period FROM wingo WHERE status = 0 AND game = ? ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1',
+            [gameName]
+        );
+        if (!rounds[0]) return null;
+
+        const period = String(rounds[0].period);
+        const result = randomInteger(0, 9);
+        const [closeResult] = await connection.execute(
+            'UPDATE wingo SET amount = ?, status = 1 WHERE period = ? AND game = ? AND status = 0',
+            [result, period, gameName]
+        );
+        if (!closeResult?.affectedRows) return null;
+
+        await ensureWinGoRound(gameName);
+        return period;
+    } catch (error) {
+        console.error('Wingo fair round close failed:', error);
+        return null;
+    }
+};
+
+const addWinGoLegacy = async (game) => {
     try {
         let join = '';
         if (game == 1) join = 'wingo';

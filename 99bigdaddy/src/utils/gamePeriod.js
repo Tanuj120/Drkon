@@ -1,4 +1,5 @@
 import connection from '../config/connectDB.js';
+import { randomInteger } from './fairRandom.js';
 
 const GAME_CONFIG = {
     wingo: {
@@ -35,7 +36,7 @@ const makeInitialPeriod = () => {
 const makeResult = ({ resultLength, resultCharacters }) => {
     let result = '';
     for (let index = 0; index < resultLength; index++) {
-        result += resultCharacters.charAt(Math.floor(Math.random() * resultCharacters.length));
+        result += resultCharacters.charAt(randomInteger(0, resultCharacters.length - 1));
     }
     return result;
 };

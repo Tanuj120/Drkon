@@ -33,25 +33,29 @@ const runSafely = async (label, task) => {
 const runWinGoRound = async (game, io) => {
     const period = await winGoController.addWinGo(game);
     if (!period) return;
-    await winGoController.handlingWinGo1P(game, period);
     const rounds = await getLatestUniqueRounds('`wingo`', getWinGoName(game));
-    io.emit('data-server', { data: rounds });
+    io.emit('data-server', { data: rounds, settled: false });
+    await winGoController.handlingWinGo1P(game, period);
+    const latestRounds = await getLatestUniqueRounds('`wingo`', getWinGoName(game));
+    io.emit('data-server', { data: latestRounds, settled: true });
 };
 
 const run5DRound = async (game, io) => {
     const period = await k5Controller.add5D(game);
     if (!period) return;
-    await k5Controller.handling5D(game, period);
     const rounds = await getLatestUniqueRounds('`5d`', game);
     io.emit('data-server-5d', { data: rounds, game: String(game) });
+    await k5Controller.handling5D(game, period);
+    io.emit('game-settled', { type: '5d', game: String(game), period });
 };
 
 const runK3Round = async (game, io) => {
     const period = await k3Controller.addK3(game);
     if (!period) return;
-    await k3Controller.handlingK3(game, period);
     const rounds = await getLatestUniqueRounds('`k3`', game);
     io.emit('data-server-k3', { data: rounds, game: String(game) });
+    await k3Controller.handlingK3(game, period);
+    io.emit('game-settled', { type: 'k3', game: String(game), period });
 };
 
 const runRoundCycle = async (game, io) => {

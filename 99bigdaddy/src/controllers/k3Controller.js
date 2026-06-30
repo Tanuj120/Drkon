@@ -2,6 +2,7 @@ import connection from "../config/connectDB.js";
 import { ensureGameRound } from "../utils/gamePeriod.js";
 import ensureGameSchema from "../utils/ensureGameSchema.js";
 import creditGamePayout from "../utils/creditGamePayout.js";
+import { randomDigitString } from "../utils/fairRandom.js";
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -303,6 +304,34 @@ function makeid(length) {
 }
 
 const addK3 = async (game) => {
+    try {
+        const gameNumber = Number(game);
+        if (![1, 3, 5, 10].includes(gameNumber)) return null;
+
+        await ensureK3Round(gameNumber);
+        const [rounds] = await connection.query(
+            'SELECT period FROM k3 WHERE status = 0 AND game = ? ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1',
+            [gameNumber]
+        );
+        if (!rounds[0]) return null;
+
+        const period = String(rounds[0].period);
+        const result = randomDigitString(3, 1, 6);
+        const [closeResult] = await connection.execute(
+            'UPDATE k3 SET result = ?, status = 1 WHERE period = ? AND game = ? AND status = 0',
+            [result, period, gameNumber]
+        );
+        if (!closeResult?.affectedRows) return null;
+
+        await ensureK3Round(gameNumber);
+        return period;
+    } catch (error) {
+        console.error('K3 fair round close failed:', error);
+        return null;
+    }
+};
+
+const addK3Legacy = async (game) => {
     try {
         let join = '';
         if (game == 1) join = 'k3d';

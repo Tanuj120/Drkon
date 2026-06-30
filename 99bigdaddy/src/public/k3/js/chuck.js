@@ -28,6 +28,11 @@ socket.on("data-server-k3", function (msg) {
         }
     }
 });
+socket.on("game-settled", function (msg) {
+    if (!msg || msg.type !== 'k3' || String(msg.game) !== String($('html').attr('data-dpr'))) return;
+    reload_money();
+    if ($('#number_result').attr('data-select') !== 'all') callAjaxMeJoin();
+});
 }
 
 function formatHistoryDigits(value) {
