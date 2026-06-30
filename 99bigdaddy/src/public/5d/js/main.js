@@ -2,6 +2,13 @@ let socket = io();
 var pageno = 0;
 var limit = 10;
 var page = 1;
+var latest5DHistory = [];
+function merge5DHistory(round) {
+    latest5DHistory = [round, ...latest5DHistory.filter((item) => String(item.period) !== String(round.period))]
+        .sort((left, right) => Number(right.period) - Number(left.period))
+        .slice(0, 10);
+    return latest5DHistory;
+}
 socket.on("data-server-5d", function (msg) {
     console.log(msg.chane);
     if (msg && Array.isArray(msg.data) && msg.data.length > 1) {
@@ -15,7 +22,7 @@ socket.on("data-server-5d", function (msg) {
             let check = $('#number_result').attr('data-select');
             if (check == 'all') {
                 reload_money();
-                callListOrder();
+                ShowListOrder(merge5DHistory(Result));
                 animationNewPar(Result.result);
             } else {
                 reload_money();
@@ -93,6 +100,7 @@ function formatHistoryDigits(value) {
 }
 
 function ShowListOrder(list_orders) {
+    latest5DHistory = list_orders.slice(0, 10);
     if (list_orders.length == 0) {
         return $(`#list_order`).html(
             `

@@ -63,6 +63,13 @@ var socket = (typeof io !== 'undefined') ? io() : null;
 var pageno = 0;
 var limit = 10;
 var page = 1;
+var latestWingoHistory = [];
+function mergeWingoHistory(round) {
+  latestWingoHistory = [round, ...latestWingoHistory.filter((item) => String(item.period) !== String(round.period))]
+    .sort((left, right) => Number(right.period) - Number(left.period))
+    .slice(0, 10);
+  return latestWingoHistory;
+}
 function getGameList(response) {
   return response && response.data && Array.isArray(response.data.gameslist) ? response.data.gameslist : [];
 }
@@ -97,7 +104,7 @@ socket.on("data-server", function (msg) {
   if (msg.data[0].game != 'wingo') return;
   if (msg.settled === false) {
     $(".time-box .info .number").text(msg.data[0].period);
-    loadWingoHistory(0, 0);
+    showListOrder(mergeWingoHistory(msg.data[1]), 0);
     return;
   }
   $(".Loading").fadeIn(0);
@@ -797,6 +804,7 @@ $(".foot .right").click(function (e) {
 });
 
 function showListOrder(list_orders, x) {
+  if (x === 0) latestWingoHistory = list_orders.slice(0, 10);
   if (list_orders.length == 0) {
     return $(`.game-list .con-box:eq(${x}) .hb`).html(
       `

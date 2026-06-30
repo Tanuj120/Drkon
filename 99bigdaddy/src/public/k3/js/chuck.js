@@ -1,3 +1,11 @@
+let latestK3History = [];
+function mergeK3History(round) {
+    latestK3History = [round, ...latestK3History.filter((item) => String(item.period) !== String(round.period))]
+        .sort((left, right) => Number(right.period) - Number(left.period))
+        .slice(0, 10);
+    return latestK3History;
+}
+
 if (typeof socket !== 'undefined' && socket && typeof socket.on === 'function') {
 socket.on("data-server-k3", function (msg) {
     if (msg && Array.isArray(msg.data) && msg.data.length > 1) {
@@ -11,7 +19,7 @@ socket.on("data-server-k3", function (msg) {
             let check = $('#number_result').attr('data-select');
             if (check == 'all') {
                 reload_money();
-                callListOrder();
+                ShowListOrder(mergeK3History(Result));
                 RenderResult(Result.result);
             } else {
                 reload_money();
@@ -41,6 +49,7 @@ function formatHistoryDigits(value) {
 }
 
 function ShowListOrder(list_orders) {
+    latestK3History = list_orders.slice(0, 10);
     if (list_orders.length == 0) {
         return $(`#list_order`).html(
             `
