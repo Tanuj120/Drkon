@@ -217,7 +217,8 @@ CREATE TABLE IF NOT EXISTS `minutes_1` (
   `today` VARCHAR(64) DEFAULT NULL,
   `time` BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `idx_minutes_1_phone_status` (`phone`, `status`)
+  KEY `idx_minutes_1_phone_status` (`phone`, `status`),
+  KEY `idx_minutes_1_game_stage_status` (`game`, `stage`, `status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `result_5d` (
@@ -241,6 +242,7 @@ CREATE TABLE IF NOT EXISTS `result_5d` (
   `time` BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_result_5d_game_status` (`game`, `status`),
+  KEY `idx_result_5d_game_stage_status` (`game`, `stage`, `status`),
   KEY `idx_result_5d_phone` (`phone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -266,6 +268,7 @@ CREATE TABLE IF NOT EXISTS `result_k3` (
   `time` BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_result_k3_game_status` (`game`, `status`),
+  KEY `idx_result_k3_game_stage_status` (`game`, `stage`, `status`),
   KEY `idx_result_k3_phone` (`phone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

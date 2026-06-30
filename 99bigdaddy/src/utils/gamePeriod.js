@@ -40,9 +40,9 @@ const makeResult = ({ resultLength, resultCharacters }) => {
     return result;
 };
 
-const getClient = async () => {
-    if (typeof connection.getConnection === 'function') {
-        const db = await connection.getConnection();
+const getClient = async (source) => {
+    if (typeof source.getConnection === 'function') {
+        const db = await source.getConnection();
         return {
             db,
             begin: () => db.beginTransaction(),
@@ -52,7 +52,7 @@ const getClient = async () => {
         };
     }
     return {
-        db: connection,
+        db: source,
         begin: async () => {},
         commit: async () => {},
         rollback: async () => {},
@@ -68,11 +68,11 @@ const movePendingBets = async (db, config, game, fromPeriod, toPeriod) => {
     );
 };
 
-const ensureGameRound = async (type, game) => {
+const ensureGameRound = async (type, game, source = connection) => {
     const config = GAME_CONFIG[type];
     if (!config) throw new Error(`Unsupported game period type: ${type}`);
 
-    const client = await getClient();
+    const client = await getClient(source);
     const lockName = `drakon:period:${type}:${game}`;
     let lockAcquired = false;
     try {

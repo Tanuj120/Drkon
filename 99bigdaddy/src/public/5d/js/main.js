@@ -152,25 +152,27 @@ function showResultNow(data) {
     $(".round-num #total_r").text(total);
 }
 function callListOrder() {
-    $.ajax({
-        type: "POST",
+    GameHistoryClient.post({
+        key: `5d-history-${$('html').attr('data-dpr')}`,
         url: "/api/webapi/5d/GetNoaverageEmerdList",
         data: {
             gameJoin: $('html').attr('data-dpr'),
             pageno: "0",
             pageto: "10",
         },
-        dataType: "json",
         success: function (response) {
-            let list_orders = response.data.gameslist;
-            $("#period").text(response.period);
-            $("#number_result").text("1/" + response.page);
+            let list_orders = response?.data?.gameslist || [];
+            if (response?.period) $("#period").text(response.period);
+            $("#number_result").text("1/" + (response?.page || 1));
             ShowListOrder(list_orders);
-            if (list_orders.length != 0) {
+            if (list_orders.length !== 0) {
                 showResultNow(list_orders[0].result);
             }
-            $('.Loading').fadeOut(0);
         },
+        error: function () {
+            ShowListOrder([]);
+            alertMess('Unable to load game history. Please tap Game History to retry.');
+        }
     });
 }
 

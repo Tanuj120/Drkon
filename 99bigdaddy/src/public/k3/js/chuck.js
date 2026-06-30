@@ -158,15 +158,14 @@ function GetMyEmerdList(list_orders) {
 }
 
 function callListOrder() {
-    $.ajax({
-        type: "POST",
+    GameHistoryClient.post({
+        key: `k3-history-${$('html').attr('data-dpr')}`,
         url: "/api/webapi/k3/GetNoaverageEmerdList",
         data: {
             gameJoin: $('html').attr('data-dpr'),
             pageno: "0",
             pageto: "10",
         },
-        dataType: "json",
         success: function (response) {
             let list_orders = response?.data?.gameslist || [];
             if (response?.period) $("#period").text(response.period);
@@ -180,10 +179,7 @@ function callListOrder() {
         },
         error: function () {
             ShowListOrder([]);
-            alertMess('Network error, please try again.');
-        },
-        complete: function () {
-            $('.Loading').fadeOut(0);
+            alertMess('Unable to load game history. Please tap Game History to retry.');
         }
     });
 }

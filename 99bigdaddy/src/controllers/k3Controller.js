@@ -1,6 +1,7 @@
 import connection from "../config/connectDB.js";
 import { ensureGameRound } from "../utils/gamePeriod.js";
 import ensureGameSchema from "../utils/ensureGameSchema.js";
+import creditGamePayout from "../utils/creditGamePayout.js";
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -322,8 +323,9 @@ const addK3 = async (game) => {
         if (game == 10) nextResult = setting[0]?.k3d10 || '-1';
 
         let newArr = '';
+        let closeResult;
         if (nextResult == '-1') {
-            await connection.execute(`UPDATE k3 SET result = ?,status = ? WHERE period = ? AND game = "${game}"`, [result2, 1, period]);
+            [closeResult] = await connection.execute(`UPDATE k3 SET result = ?,status = ? WHERE period = ? AND game = "${game}" AND status = 0`, [result2, 1, period]);
             newArr = '-1';
         } else {
             let result = '';
@@ -338,8 +340,9 @@ const addK3 = async (game) => {
                 newArr = newArr.slice(0, -1);
             }
             result = arr[0];
-            await connection.execute(`UPDATE k3 SET result = ?,status = ? WHERE period = ? AND game = ${game}`, [result, 1, period]);
+            [closeResult] = await connection.execute(`UPDATE k3 SET result = ?,status = ? WHERE period = ? AND game = ${game} AND status = 0`, [result, 1, period]);
         }
+        if (!closeResult?.affectedRows) return null;
         await ensureK3Round(game);
 
         if (game == 1) join = 'k3d';
@@ -348,22 +351,28 @@ const addK3 = async (game) => {
         if (game == 10) join = 'k3d10';
 
         await connection.execute(`UPDATE admin SET ${join} = ?`, [newArr]);
+        return String(period);
     } catch (error) {
         if (error) {
+            console.error('K3 round close failed:', error);
         }
+        return null;
     }
 }
 
-async function funHanding(game) {
-    const [k5d] = await connection.query(`SELECT * FROM k3 WHERE status != 0 AND game = ${game} ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
+async function funHanding(game, settlementPeriod = null) {
+    const [k5d] = settlementPeriod
+        ? await connection.query('SELECT * FROM k3 WHERE status != 0 AND game = ? AND period = ? LIMIT 1', [game, String(settlementPeriod)])
+        : await connection.query(`SELECT * FROM k3 WHERE status != 0 AND game = ${game} ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
     if (!k5d[0]) {
         await ensureK3Round(game);
         return;
     }
     let k5dInfo = k5d[0];
+    const settledPeriod = String(k5dInfo.period);
 
     // update ket qua
-    await connection.execute(`UPDATE result_k3 SET result = ? WHERE status = 0 AND game = ${game}`, [k5dInfo.result]);
+    await connection.execute('UPDATE result_k3 SET result = ? WHERE status = 0 AND game = ? AND stage = ?', [k5dInfo.result, game, settledPeriod]);
     let result = String(k5dInfo.result).split('');
     let total = 0;
     for (let i = 0; i < result.length; i++) {
@@ -371,7 +380,7 @@ async function funHanding(game) {
     }
 
     // xử lý game Tổng số
-    const [totalNumber] = await connection.execute(`SELECT id, bet FROM result_k3 WHERE status = 0 AND game = ${game} AND typeGame = 'total' `);
+    const [totalNumber] = await connection.execute(`SELECT id, bet FROM result_k3 WHERE status = 0 AND game = ? AND stage = ? AND typeGame = 'total'`, [game, settledPeriod]);
     let totalN = totalNumber.length;
     for (let i = 0; i < totalN; i++) {
         let sult = totalNumber[i].bet.split(',');
@@ -416,7 +425,7 @@ async function funHanding(game) {
     }
 
     // xử lý game 2 số trùng nhau
-    const [totaltwoSame] = await connection.execute(`SELECT id, bet FROM result_k3 WHERE status = 0 AND game = ${game} AND typeGame = 'two-same' `);
+    const [totaltwoSame] = await connection.execute(`SELECT id, bet FROM result_k3 WHERE status = 0 AND game = ? AND stage = ? AND typeGame = 'two-same'`, [game, settledPeriod]);
     let totalTwoSame = totaltwoSame.length;
     for (let i = 0; i < totalTwoSame; i++) {
         let sult = totaltwoSame[i].bet.split('@');
@@ -509,7 +518,7 @@ async function funHanding(game) {
     }
 
     // xử lý game 3 số trùng nhau
-    const [ThreeSame] = await connection.execute(`SELECT id, bet FROM result_k3 WHERE status = 0 AND game = ${game} AND typeGame = 'three-same' `);
+    const [ThreeSame] = await connection.execute(`SELECT id, bet FROM result_k3 WHERE status = 0 AND game = ? AND stage = ? AND typeGame = 'three-same'`, [game, settledPeriod]);
     let ThreeSameL = ThreeSame.length;
     for (let i = 0; i < ThreeSameL; i++) {
         let sult = ThreeSame[i].bet.split('@');
@@ -550,7 +559,7 @@ async function funHanding(game) {
     }
 
     // xử lý game 3 số khác nhau
-    const [Unlike] = await connection.execute(`SELECT id, bet FROM result_k3 WHERE status = 0 AND game = ${game} AND typeGame = 'unlike' `);
+    const [Unlike] = await connection.execute(`SELECT id, bet FROM result_k3 WHERE status = 0 AND game = ? AND stage = ? AND typeGame = 'unlike'`, [game, settledPeriod]);
     let Unlikes = Unlike.length;
     for (let i = 0; i < Unlikes; i++) {
         let sult = Unlike[i].bet.split('@');
@@ -770,8 +779,8 @@ const priceGet = {
     }
 }
 
-async function plusMoney(game) {
-    const [order] = await connection.execute(`SELECT id, phone, bet, price, money, fee, amount, result, typeGame FROM result_k3 WHERE status = 0 AND game = ${game} `);
+async function plusMoney(game, settledPeriod) {
+    const [order] = await connection.execute('SELECT id, phone, bet, price, money, fee, amount, result, typeGame FROM result_k3 WHERE status = 0 AND game = ? AND stage = ?', [game, String(settledPeriod)]);
     for (let i = 0; i < order.length; i++) {
         let orders = order[i];
         let phone = orders.phone;
@@ -809,7 +818,7 @@ async function plusMoney(game) {
                 nhan_duoc += price * 1.92;
             }
 
-            if (totalResult2 >= 3 && totalResult2 <= 11 && lengWin2.includes('s')) {
+            if (totalResult2 >= 3 && totalResult2 <= 10 && lengWin2.includes('s')) {
                 nhan_duoc += price * 1.92;
             }
             
@@ -818,7 +827,7 @@ async function plusMoney(game) {
                 case '3':
                     get = 207.36;
                     break;
-                case '3':
+                case '4':
                     get = 69.12;
                     break;
                 case '5':
@@ -865,9 +874,7 @@ async function plusMoney(game) {
                     break;
             }
             nhan_duoc += price * get;
-            await connection.execute('UPDATE `result_k3` SET `get` = ?, `status` = 1 WHERE `id` = ? ', [nhan_duoc, id]);
-            const sql = 'UPDATE `users` SET `money` = `money` + ? WHERE `phone` = ? ';
-            await connection.execute(sql, [nhan_duoc, phone]);
+            await creditGamePayout({ table: 'result_k3', betId: id, phone, payout: nhan_duoc });
         }
         nhan_duoc = 0;
         if (orders.typeGame == "two-same") {
@@ -930,9 +937,7 @@ async function plusMoney(game) {
             }
             nhan_duoc -= orders.fee;
 
-            await connection.execute('UPDATE `result_k3` SET `get` = ?, `status` = 1 WHERE `id` = ? ', [nhan_duoc, id]);
-            const sql = 'UPDATE `users` SET `money` = `money` + ? WHERE `phone` = ? ';
-            await connection.execute(sql, [nhan_duoc, phone]);
+            await creditGamePayout({ table: 'result_k3', betId: id, phone, payout: nhan_duoc });
         }
 
         nhan_duoc = 0;
@@ -965,9 +970,7 @@ async function plusMoney(game) {
                 let total = (orders.money / (1 + bala) / orders.amount);
                 nhan_duoc += total * 34.56 - orders.fee;
             }
-            await connection.execute('UPDATE `result_k3` SET `get` = ?, `status` = 1 WHERE `id` = ? ', [nhan_duoc, id]);
-            const sql = 'UPDATE `users` SET `money` = `money` + ? WHERE `phone` = ? ';
-            await connection.execute(sql, [nhan_duoc, phone]);
+            await creditGamePayout({ table: 'result_k3', betId: id, phone, payout: nhan_duoc });
         }
 
         nhan_duoc = 0;
@@ -1032,20 +1035,18 @@ async function plusMoney(game) {
                     }
                 }
             }
-            await connection.execute('UPDATE `result_k3` SET `get` = ?, `status` = 1 WHERE `id` = ? ', [nhan_duoc, id]);
-            const sql = 'UPDATE `users` SET `money` = `money` + ? WHERE `phone` = ? ';
-            await connection.execute(sql, [nhan_duoc, phone]);
+            await creditGamePayout({ table: 'result_k3', betId: id, phone, payout: nhan_duoc });
         }
     }
 }
 
-const handlingK3 = async (typeid) => {
+const handlingK3 = async (typeid, settlementPeriod = null) => {
 
     let game = Number(typeid);
 
-    await funHanding(game);
+    await funHanding(game, settlementPeriod);
 
-    await plusMoney(game);
+    if (settlementPeriod) await plusMoney(game, settlementPeriod);
 }
 
 const listOrderOld = async (req, res) => {

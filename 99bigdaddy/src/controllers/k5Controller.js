@@ -1,6 +1,7 @@
 import e from "express";
 import connection from "../config/connectDB.js";
 import { ensureGameRound } from "../utils/gamePeriod.js";
+import creditGamePayout from "../utils/creditGamePayout.js";
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -396,8 +397,9 @@ const add5D = async(game) => {
         if (game == 10) nextResult = setting[0]?.k5d10 || '-1';
 
         let newArr = '';
+        let closeResult;
         if (nextResult == '-1') {
-            await connection.execute(`UPDATE 5d SET result = ?,status = ? WHERE period = ? AND game = "${game}"`, [result2, 1, period]);
+            [closeResult] = await connection.execute(`UPDATE 5d SET result = ?,status = ? WHERE period = ? AND game = "${game}" AND status = 0`, [result2, 1, period]);
             newArr = '-1';
         } else {
             let result = '';
@@ -412,8 +414,9 @@ const add5D = async(game) => {
                 newArr = newArr.slice(0, -1);
             }
             result = arr[0];
-            await connection.execute(`UPDATE 5d SET result = ?,status = ? WHERE period = ? AND game = ${game}`, [result, 1, period]);
+            [closeResult] = await connection.execute(`UPDATE 5d SET result = ?,status = ? WHERE period = ? AND game = ${game} AND status = 0`, [result, 1, period]);
         }
+        if (!closeResult?.affectedRows) return null;
         await ensure5DRound(game);
 
         if (game == 1) join = 'k5d';
@@ -422,10 +425,12 @@ const add5D = async(game) => {
         if (game == 10) join = 'k5d10'; 
 
         await connection.execute(`UPDATE admin SET ${join} = ?`, [newArr]);
+        return String(period);
     } catch (error) {
         if (error) {
             console.log(error);
         }
+        return null;
     }
 }
 
@@ -618,13 +623,60 @@ async function funHanding(game) {
     }
 }
 
-const handling5D = async(typeid) => {
+const is5DBetWinner = (betValue, joinBet, resultValue) => {
+    const bet = String(betValue || '');
+    const result = String(resultValue || '').padStart(5, '0').slice(-5);
+    const positions = { a: 0, b: 1, c: 2, d: 3, e: 4 };
+    const isNumericBet = /^\d+$/.test(bet);
+
+    if (joinBet === 'total') {
+        const total = result.split('').reduce((sum, digit) => sum + Number(digit), 0);
+        if (bet === 'b') return total > 22;
+        if (bet === 's') return total <= 22;
+        if (bet === 'c') return total % 2 === 0;
+        if (bet === 'l') return total % 2 !== 0;
+        return false;
+    }
+
+    const position = positions[joinBet];
+    if (position === undefined) return false;
+    const digit = Number(result[position]);
+    if (isNumericBet) return bet.includes(String(digit));
+    if (bet === 'b') return digit >= 5;
+    if (bet === 's') return digit <= 4;
+    if (bet === 'c') return digit % 2 === 0;
+    if (bet === 'l') return digit % 2 !== 0;
+    return false;
+};
+
+const settle5DPeriod = async (game, settlementPeriod) => {
+    const [roundRows] = await connection.query(
+        'SELECT period, result FROM `5d` WHERE game = ? AND period = ? AND status != 0 LIMIT 1',
+        [game, String(settlementPeriod)]
+    );
+    if (!roundRows.length) return;
+    const round = roundRows[0];
+    const [bets] = await connection.query(
+        'SELECT id, bet, join_bet FROM result_5d WHERE game = ? AND stage = ? AND status = 0',
+        [game, String(round.period)]
+    );
+    for (const bet of bets) {
+        const winner = is5DBetWinner(bet.bet, bet.join_bet, round.result);
+        await connection.execute(
+            'UPDATE result_5d SET result = ?, status = ? WHERE id = ? AND status = 0',
+            [round.result, winner ? 0 : 2, bet.id]
+        );
+    }
+};
+
+const handling5D = async(typeid, settlementPeriod = null) => {
 
     let game = Number(typeid);
 
-    await funHanding(game);
+    if (!settlementPeriod) return;
+    await settle5DPeriod(game, settlementPeriod);
 
-    const [order] = await connection.execute(`SELECT id, phone, bet, price, money, fee, amount FROM result_5d WHERE status = 0 AND game = ${game} `);
+    const [order] = await connection.execute('SELECT id, phone, bet, price, money, fee, amount FROM result_5d WHERE status = 0 AND game = ? AND stage = ?', [game, String(settlementPeriod)]);
     for (let i = 0; i < order.length; i++) {
         let orders = order[i];
         let id = orders.id;
@@ -641,12 +693,11 @@ const handling5D = async(typeid) => {
             nhan_duoc += orders.price * 2;
         }
 
-        await connection.execute('UPDATE `result_5d` SET `get` = ?, `status` = 1 WHERE `id` = ? ', [nhan_duoc, id]);
-        const sql = 'UPDATE `users` SET `money` = `money` + ? WHERE `phone` = ? ';
-        await connection.execute(sql, [nhan_duoc, phone]);
+        await creditGamePayout({ table: 'result_5d', betId: id, phone, payout: nhan_duoc });
     }
 }
 
+export { is5DBetWinner };
 
 export default {
     K5DPage,

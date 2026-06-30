@@ -1,6 +1,7 @@
 import connection from "../config/connectDB.js";
 import { ensureGameRound } from "../utils/gamePeriod.js";
 import ensureGameSchema from "../utils/ensureGameSchema.js";
+import creditGamePayout from "../utils/creditGamePayout.js";
 // import jwt from 'jsonwebtoken'
 // import md5 from "md5";
 // import e from "express";
@@ -595,7 +596,7 @@ const addWinGo = async (game) => {
         const [setting] = await connection.query('SELECT * FROM `admin` ');
         let period = winGoNow[0].period; // cầu hiện tại
         let amount = Math.floor(Math.random() * 10);
-        const [minPlayers] = await connection.query(`SELECT * FROM minutes_1 WHERE status = 0 AND game = "${join}"`);
+        const [minPlayers] = await connection.query('SELECT * FROM minutes_1 WHERE status = 0 AND game = ? AND stage = ?', [join, String(period)]);
         if (minPlayers.length >= 2) {
             const betColumns = [
                 // red_small 
@@ -618,8 +619,8 @@ const addWinGo = async (game) => {
                 const [result] = await connection.query(`
                 SELECT SUM(money) AS total_money
                 FROM minutes_1
-                WHERE game = "${join}" AND status = 0 AND bet IN (${column.bets.map(bet => `"${bet}"`).join(',')})
-            `);
+                WHERE game = ? AND stage = ? AND status = 0 AND bet IN (${column.bets.map(() => '?').join(',')})
+            `, [join, String(period), ...column.bets]);
                 // console.log("total_money (totalMoneyPromises): ", result[0].total_money);
                 return { name: column.name, total_money: result[0].total_money ? parseInt(result[0].total_money) : 0 };
             });
@@ -669,8 +670,8 @@ const addWinGo = async (game) => {
                 const [result] = await connection.query(`
                     SELECT SUM(money) AS total_money
                     FROM minutes_1
-                    WHERE game = "${join}" AND status = 0 AND bet IN (${column.bets.map(bet => `"${bet}"`).join(',')})
-                `);
+                    WHERE game = ? AND stage = ? AND status = 0 AND bet IN (${column.bets.map(() => '?').join(',')})
+                `, [join, String(period), ...column.bets]);
                 // console.log("total_money (categories): ", result[0].total_money);
                 return { name: column.name, total_money: parseInt(result[0]?.total_money) || 0 };
             }));
@@ -705,9 +706,10 @@ const addWinGo = async (game) => {
         if (game == 10) nextResult = setting[0]?.wingo10 || '-1';
 
         let newArr = '';
+        let closeResult;
         if (nextResult == '-1') {
             // console.log("Updating amount in wingo table: ", amount);
-            await connection.execute(`UPDATE wingo SET amount = ?,status = ? WHERE period = ? AND game = "${join}"`, [amount, 1, period]);
+            [closeResult] = await connection.execute(`UPDATE wingo SET amount = ?,status = ? WHERE period = ? AND game = "${join}" AND status = 0`, [amount, 1, period]);
             newArr = '-1';
         } else {
             let result = '';
@@ -723,8 +725,9 @@ const addWinGo = async (game) => {
             }
             result = arr[0];
             // console.log("Updating result in wingo table: ", result);
-            await connection.execute(`UPDATE wingo SET amount = ?,status = ? WHERE period = ? AND game = "${join}"`, [result, 1, period]);
+            [closeResult] = await connection.execute(`UPDATE wingo SET amount = ?,status = ? WHERE period = ? AND game = "${join}" AND status = 0`, [result, 1, period]);
         }
+        if (!closeResult?.affectedRows) return null;
         await ensureWinGoRound(join);
 
         if (game == 1) join = 'wingo1';
@@ -733,16 +736,18 @@ const addWinGo = async (game) => {
         if (game == 10) join = 'wingo10';
 
         await connection.execute(`UPDATE admin SET ${join} = ?`, [newArr]);
+        return String(period);
     } catch (error) {
         if (error) {
             console.log(error);
         }
+        return null;
     }
 }
 
 
 
-const handlingWinGo1P = async (typeid) => {
+const handlingWinGo1P = async (typeid, settlementPeriod = null) => {
 
     let game = '';
     if (typeid == 1) game = 'wingo';
@@ -750,58 +755,61 @@ const handlingWinGo1P = async (typeid) => {
     if (typeid == 5) game = 'wingo5';
     if (typeid == 10) game = 'wingo10';
 
-    const [winGoNow] = await connection.query(`SELECT * FROM wingo WHERE status != 0 AND game = '${game}' ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
+    const [winGoNow] = settlementPeriod
+        ? await connection.query('SELECT * FROM wingo WHERE status != 0 AND game = ? AND period = ? LIMIT 1', [game, String(settlementPeriod)])
+        : await connection.query(`SELECT * FROM wingo WHERE status != 0 AND game = '${game}' ORDER BY CAST(period AS UNSIGNED) DESC, id DESC LIMIT 1 `);
     if (!winGoNow[0]) {
         await ensureWinGoRound(game);
         return;
     }
 
     // update ket qua
-    await connection.execute(`UPDATE minutes_1 SET result = ? WHERE status = 0 AND game = '${game}'`, [winGoNow[0].amount]);
+    const settledPeriod = String(winGoNow[0].period);
+    await connection.execute('UPDATE minutes_1 SET result = ? WHERE status = 0 AND game = ? AND stage = ?', [winGoNow[0].amount, game, settledPeriod]);
     let result = Number(winGoNow[0].amount);
     switch (result) {
         case 0:
-            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet != "l" AND bet != "n" AND bet != "d" AND bet != "0" AND bet != "t" `, []);
+            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet != "l" AND bet != "n" AND bet != "d" AND bet != "0" AND bet != "t" `, [game, settledPeriod]);
             break;
         case 1:
-            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet != "l" AND bet != "n" AND bet != "x" AND bet != "1" `, []);
+            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet != "l" AND bet != "n" AND bet != "x" AND bet != "1" `, [game, settledPeriod]);
             break;
         case 2:
-            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet != "l" AND bet != "n" AND bet != "d" AND bet != "2" `, []);
+            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet != "l" AND bet != "n" AND bet != "d" AND bet != "2" `, [game, settledPeriod]);
             break;
         case 3:
-            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet != "l" AND bet != "n" AND bet != "x" AND bet != "3" `, []);
+            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet != "l" AND bet != "n" AND bet != "x" AND bet != "3" `, [game, settledPeriod]);
             break;
         case 4:
-            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet != "l" AND bet != "n" AND bet != "d" AND bet != "4" `, []);
+            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet != "l" AND bet != "n" AND bet != "d" AND bet != "4" `, [game, settledPeriod]);
             break;
         case 5:
-            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet != "l" AND bet != "n" AND bet != "x" AND bet != "5" AND bet != "t" `, []);
+            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet != "l" AND bet != "n" AND bet != "x" AND bet != "5" AND bet != "t" `, [game, settledPeriod]);
             break;
         case 6:
-            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet != "l" AND bet != "n" AND bet != "d" AND bet != "6" `, []);
+            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet != "l" AND bet != "n" AND bet != "d" AND bet != "6" `, [game, settledPeriod]);
             break;
         case 7:
-            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet != "l" AND bet != "n" AND bet != "x" AND bet != "7" `, []);
+            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet != "l" AND bet != "n" AND bet != "x" AND bet != "7" `, [game, settledPeriod]);
             break;
         case 8:
-            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet != "l" AND bet != "n" AND bet != "d" AND bet != "8" `, []);
+            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet != "l" AND bet != "n" AND bet != "d" AND bet != "8" `, [game, settledPeriod]);
             break;
         case 9:
-            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet != "l" AND bet != "n" AND bet != "x" AND bet != "9" `, []);
+            await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet != "l" AND bet != "n" AND bet != "x" AND bet != "9" `, [game, settledPeriod]);
             break;
         default:
             break;
     }
 
     if (result < 5) {
-        await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet = "l" `, []);
+        await connection.execute('UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet = "l"', [game, settledPeriod]);
     } else {
-        await connection.execute(`UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = "${game}" AND bet = "n" `, []);
+        await connection.execute('UPDATE minutes_1 SET status = 2 WHERE status = 0 AND game = ? AND stage = ? AND bet = "n"', [game, settledPeriod]);
     }
 
     // lấy ra danh sách đặt cược chưa xử lý
-    const [order] = await connection.execute(`SELECT * FROM minutes_1 WHERE status = 0 AND game = '${game}' `);
+    const [order] = await connection.execute('SELECT * FROM minutes_1 WHERE status = 0 AND game = ? AND stage = ?', [game, settledPeriod]);
     for (let i = 0; i < order.length; i++) {
         let orders = order[i];
         let result = orders.result;
@@ -894,13 +902,8 @@ const handlingWinGo1P = async (typeid) => {
                 }
             }
         }
-        const [users] = await connection.execute('SELECT `money` FROM `users` WHERE `phone` = ?', [phone]);
-        let totals = parseFloat(users[0].money) + parseFloat(nhan_duoc);
-        console.log("Updating money in users table: ", totals);
         console.log("Updating nhan_duoc in minutes_1 table: ", nhan_duoc);
-        await connection.execute('UPDATE `minutes_1` SET `get` = ?, `status` = 1 WHERE `id` = ? ', [parseFloat(nhan_duoc), id]);
-        const sql = 'UPDATE `users` SET `money` = ? WHERE `phone` = ? ';
-        await connection.execute(sql, [totals, phone]);
+        await creditGamePayout({ table: 'minutes_1', betId: id, phone, payout: nhan_duoc });
     }
 }
 

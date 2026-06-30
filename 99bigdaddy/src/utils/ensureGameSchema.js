@@ -29,6 +29,15 @@ const ensureColumnType = async (table, column, dataType, definition) => {
   await connection.execute(`ALTER TABLE \`${table}\` MODIFY COLUMN ${definition}`);
 };
 
+const ensureIndex = async (table, indexName, columns) => {
+  const [rows] = await connection.query(
+    "SELECT COUNT(*) AS count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?",
+    [table, indexName],
+  );
+  if (Number(rows?.[0]?.count || 0) > 0) return;
+  await connection.execute(`ALTER TABLE \`${table}\` ADD INDEX \`${indexName}\` (${columns})`);
+};
+
 const repairGameSchema = async () => {
   await ensureColumn("minutes_1", "id_product", "`id_product` VARCHAR(64) DEFAULT NULL");
   await ensureColumn("minutes_1", "code", "`code` VARCHAR(64) DEFAULT NULL");
@@ -37,9 +46,12 @@ const repairGameSchema = async () => {
   await ensureColumn("minutes_1", "get", "`get` DECIMAL(20,2) NOT NULL DEFAULT 0");
   await ensureColumnType("minutes_1", "today", "varchar", "`today` VARCHAR(64) DEFAULT NULL");
   await ensureColumnType("minutes_1", "time", "bigint", "`time` BIGINT NOT NULL DEFAULT 0");
+  await ensureIndex("minutes_1", "idx_minutes_1_game_stage_status", "`game`, `stage`, `status`");
 
   await ensureColumn("result_k3", "join_bet", "`join_bet` VARCHAR(32) DEFAULT NULL");
   await ensureColumn("result_k3", "typeGame", "`typeGame` VARCHAR(64) DEFAULT NULL");
+  await ensureIndex("result_k3", "idx_result_k3_game_stage_status", "`game`, `stage`, `status`");
+  await ensureIndex("result_5d", "idx_result_5d_game_stage_status", "`game`, `stage`, `status`");
 };
 
 const ensureGameSchema = async () => {

@@ -69,6 +69,28 @@ function getGameList(response) {
 function getGamePage(response) {
   return response && response.page ? response.page : 1;
 }
+function loadWingoHistory(targetIndex = 0, offset = 0) {
+  return GameHistoryClient.post({
+    key: `wingo-10-history-${targetIndex}`,
+    url: "/api/webapi/GetNoaverageEmerdList",
+    data: {
+      typeid: "10",
+      pageno: String(offset),
+      pageto: "10",
+      language: "vi",
+    },
+    success: function (response) {
+      const listOrders = getGameList(response);
+      if (response.period) $(".time-box .info .number").text(response.period);
+      $(`.game-list .con-box:eq(${targetIndex}) .page-nav .number`).text("1/" + getGamePage(response));
+      showListOrder(listOrders, targetIndex);
+    },
+    error: function () {
+      showListOrder([], targetIndex);
+      alertMessJoin("Unable to load game history. Please tap Game History to retry.");
+    },
+  });
+}
 if (socket) {
 socket.on("data-server", function (msg) {
   if (!msg || !Array.isArray(msg.data) || msg.data.length < 2) return;
@@ -79,7 +101,7 @@ socket.on("data-server", function (msg) {
     let data2 = []; // lấy ra cầu cũ
     let data3 = data2.push(msg.data[1]);
     $(".time-box .info .number").text(data1.period);
-    showListOrder3(data2, 0);
+    loadWingoHistory(0, 0);
     pageno = 0;
     limit = 10;
     page = 1;
@@ -610,26 +632,7 @@ $(".game-list .tab .li:eq(0)").click(function (e) {
   $(".game-list .li").removeClass("block-click");
   $(this).addClass("block-click");
   $(".game-list .con-box:eq(0)").css("display", "block");
-  $.ajax({
-    type: "POST",
-    url: "/api/webapi/GetNoaverageEmerdList",
-    data: {
-      typeid: "10",
-      pageno: "0",
-      pageto: "10",
-      language: "vi",
-    },
-    dataType: "json",
-    success: function (response) {
-      let list_orders = getGameList(response);
-      $(".time-box .info .number").text(response.period);
-      $(".page-nav .number").text("1/" + getGamePage(response));
-      $(".game-list .con-box:eq(0) .page-nav .number").text(
-        "1/" + getGamePage(response)
-      );
-      showListOrder(list_orders, 0);
-    },
-  });
+  loadWingoHistory(0, 0);
 });
 $(".game-list .tab .li:eq(1)").click(function (e) {
   e.preventDefault();
@@ -1227,23 +1230,7 @@ function showListOrder_t(list_orders, x) {
   $targetDiv.html(htmls);
 }
 
-$.ajax({
-  type: "POST",
-  url: "/api/webapi/GetNoaverageEmerdList",
-  data: {
-    typeid: "10",
-    pageno: "0",
-    pageto: "10",
-    language: "vi",
-  },
-  dataType: "json",
-  success: function (response) {
-    let list_orders = getGameList(response);
-    $(".time-box .info .number").text(response.period);
-    $(".game-list .con-box:eq(0) .page-nav .number").text("1/" + getGamePage(response));
-    showListOrder(list_orders, 0);
-  },
-});
+loadWingoHistory(0, 0);
 
 function formateT(params) {
   let result = params < 10 ? "0" + params : params;
