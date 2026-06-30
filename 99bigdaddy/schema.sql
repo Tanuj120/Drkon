@@ -76,7 +76,8 @@ CREATE TABLE IF NOT EXISTS `wingo` (
   `status` TINYINT NOT NULL DEFAULT 0,
   `time` BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `idx_wingo_game_status_period` (`game`, `status`, `period`)
+  KEY `idx_wingo_game_status_period` (`game`, `status`, `period`),
+  UNIQUE KEY `uq_wingo_game_period` (`game`, `period`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `5d` (
@@ -87,7 +88,8 @@ CREATE TABLE IF NOT EXISTS `5d` (
   `status` TINYINT NOT NULL DEFAULT 0,
   `time` BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `idx_5d_game_status_period` (`game`, `status`, `period`)
+  KEY `idx_5d_game_status_period` (`game`, `status`, `period`),
+  UNIQUE KEY `uq_5d_game_period` (`game`, `period`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `k3` (
@@ -98,7 +100,8 @@ CREATE TABLE IF NOT EXISTS `k3` (
   `status` TINYINT NOT NULL DEFAULT 0,
   `time` BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
-  KEY `idx_k3_game_status_period` (`game`, `status`, `period`)
+  KEY `idx_k3_game_status_period` (`game`, `status`, `period`),
+  UNIQUE KEY `uq_k3_game_period` (`game`, `period`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `point_list` (
@@ -351,6 +354,15 @@ CREATE TABLE IF NOT EXISTS `turn_over` (
   `time` BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_turn_over_phone` (`phone`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `game_round_executions` (
+  `game_type` VARCHAR(16) NOT NULL,
+  `game` INT NOT NULL,
+  `round_slot` BIGINT NOT NULL,
+  `created_at` BIGINT NOT NULL,
+  PRIMARY KEY (`game_type`, `game`, `round_slot`),
+  KEY `idx_game_round_executions_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `fixed_deposits` (

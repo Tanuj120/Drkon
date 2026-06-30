@@ -14,12 +14,12 @@
         const finish = () => {
             if (pendingRequests.get(requestKey) === request) {
                 pendingRequests.delete(requestKey);
-                $('.Loading').fadeOut(0);
+                if (!options.silent) $('.Loading').fadeOut(0);
             }
         };
 
         const send = () => {
-            $('.Loading').fadeIn(0);
+            if (!options.silent) $('.Loading').fadeIn(0);
             request = $.ajax({
                 type: 'POST',
                 url: options.url,
@@ -52,6 +52,11 @@
         return send();
     }
 
+    function shouldPollRound(durationMinutes, windowMilliseconds = 12000) {
+        const duration = Number(durationMinutes) * 60 * 1000;
+        return Number.isFinite(duration) && duration > 0 && (Date.now() % duration) < windowMilliseconds;
+    }
+
     $.ajaxPrefilter((options) => {
         if (/Get(?:My|Noaverage)EmerdList/.test(options.url || '') && !options.timeout) {
             options.timeout = 10000;
@@ -64,5 +69,5 @@
         }
     });
 
-    global.GameHistoryClient = { post };
+    global.GameHistoryClient = { post, shouldPollRound };
 })(window, window.jQuery);

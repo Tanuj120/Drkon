@@ -171,9 +171,10 @@ function GetMyEmerdList(list_orders) {
     $(`#list_order`).html(htmls);
 }
 
-function callListOrder() {
+function callListOrder(silent = false) {
     GameHistoryClient.post({
         key: `k3-history-${$('html').attr('data-dpr')}`,
+        silent,
         url: "/api/webapi/k3/GetNoaverageEmerdList",
         data: {
             gameJoin: $('html').attr('data-dpr'),
@@ -197,6 +198,10 @@ function callListOrder() {
         }
     });
 }
+setInterval(() => {
+    const game = Number($('html').attr('data-dpr'));
+    if (pageno === 0 && $('#number_result').attr('data-select') === 'all' && GameHistoryClient.shouldPollRound(game)) callListOrder(true);
+}, 2000);
 
 callListOrder();
 

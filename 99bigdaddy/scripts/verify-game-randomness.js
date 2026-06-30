@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomDigitString, randomInteger } from '../src/utils/fairRandom.js';
+import { claimRoundExecution, getRoundSlot } from '../src/utils/gameRoundScheduler.js';
 
 const chiSquare = (counts) => {
     const total = counts.reduce((sum, count) => sum + count, 0);
@@ -20,6 +21,22 @@ for (let index = 1; index < 200000; index += 1) {
 }
 assert.ok(chiSquare(wingoCounts) < 45, 'Wingo digit distribution is unexpectedly biased');
 assert.ok(chiSquare(wingoPairs) < 180, 'Wingo consecutive result pairs are unexpectedly biased');
+
+let serialProduct = 0;
+let serialLeft = 0;
+let serialRight = 0;
+let serialCount = 0;
+previousWingo = randomInteger(0, 9);
+for (let index = 0; index < 200000; index += 1) {
+    const result = randomInteger(0, 9);
+    serialProduct += previousWingo * result;
+    serialLeft += previousWingo;
+    serialRight += result;
+    serialCount += 1;
+    previousWingo = result;
+}
+const serialCovariance = (serialProduct / serialCount) - ((serialLeft / serialCount) * (serialRight / serialCount));
+assert.ok(Math.abs(serialCovariance) < 0.12, 'Wingo outcomes show serial dependence');
 
 const k3Counts = Array(6).fill(0);
 for (let index = 0; index < 100000; index += 1) {
@@ -60,7 +77,30 @@ for (const [functionName, emitMarker, settlementMarker] of [
 const socketSource = await readFile('src/controllers/socketIoController.js', 'utf8');
 assert.ok(!/socket\.on\(['"]data-server['"]/.test(socketSource), 'Browsers can impersonate official game result broadcasts');
 
+const claimedSlots = new Set();
+const schedulerDb = {
+    execute: async (sql, params) => {
+        assert.match(sql, /INSERT IGNORE INTO game_round_executions/);
+        const key = params.slice(0, 3).join(':');
+        const inserted = !claimedSlots.has(key);
+        claimedSlots.add(key);
+        return [{ affectedRows: inserted ? 1 : 0 }];
+    },
+};
+const boundary = Date.UTC(2026, 5, 30, 12, 0, 0);
+const simultaneousClaims = await Promise.all(
+    Array.from({ length: 100 }, () => claimRoundExecution('wingo', 1, boundary, schedulerDb)),
+);
+assert.equal(simultaneousClaims.filter((claim) => claim.claimed).length, 1, 'Multiple workers can generate the same Wingo round');
+assert.equal((await claimRoundExecution('wingo', 1, boundary + 60_000, schedulerDb)).claimed, true, 'The next Wingo slot was not accepted');
+assert.equal((await claimRoundExecution('k3', 1, boundary, schedulerDb)).claimed, true, 'Different games incorrectly share a scheduler claim');
+assert.equal(getRoundSlot(3, boundary), getRoundSlot(3, boundary + 120_000), 'A 3-minute slot changed too early');
+assert.notEqual(getRoundSlot(3, boundary), getRoundSlot(3, boundary + 180_000), 'A 3-minute slot did not advance');
+
+const schemaSource = await readFile('src/utils/ensureGameSchema.js', 'utf8');
+assert.match(schemaSource, /UNIQUE INDEX.*game.*period/s, 'Round tables do not enforce unique game periods');
+
 console.log('Wingo counts:', wingoCounts.join(','));
 console.log('K3 counts:', k3Counts.join(','));
 console.log('5D counts:', fiveDCounts.join(','));
-console.log('Cryptographic distributions and immediate broadcast order passed.');
+console.log('Cryptographic independence, single-writer scheduling, and immediate broadcast order passed.');

@@ -76,9 +76,10 @@ function getGameList(response) {
 function getGamePage(response) {
   return response && response.page ? response.page : 1;
 }
-function loadWingoHistory(targetIndex = 0, offset = 0) {
+function loadWingoHistory(targetIndex = 0, offset = 0, silent = false) {
   return GameHistoryClient.post({
     key: `wingo-1-history-${targetIndex}`,
+    silent,
     url: "/api/webapi/GetNoaverageEmerdList",
     data: {
       typeid: "1",
@@ -98,6 +99,9 @@ function loadWingoHistory(targetIndex = 0, offset = 0) {
     },
   });
 }
+setInterval(() => {
+  if (pageno === 0 && GameHistoryClient.shouldPollRound(1)) loadWingoHistory(0, 0, true);
+}, 2000);
 if (socket) {
 socket.on("data-server", function (msg) {
   if (!msg || !Array.isArray(msg.data) || msg.data.length < 2) return;

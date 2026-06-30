@@ -38,7 +38,43 @@ const ensureIndex = async (table, indexName, columns) => {
   await connection.execute(`ALTER TABLE \`${table}\` ADD INDEX \`${indexName}\` (${columns})`);
 };
 
+const ensureUniqueIndex = async (table, indexName, columns) => {
+  const [rows] = await connection.query(
+    "SELECT COUNT(*) AS count FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?",
+    [table, indexName],
+  );
+  if (Number(rows?.[0]?.count || 0) > 0) return;
+  await connection.execute(`ALTER TABLE \`${table}\` ADD UNIQUE INDEX \`${indexName}\` (${columns})`);
+};
+
 const repairGameSchema = async () => {
+  await connection.execute(`
+    CREATE TABLE IF NOT EXISTS game_round_executions (
+      game_type VARCHAR(16) NOT NULL,
+      game INT NOT NULL,
+      round_slot BIGINT NOT NULL,
+      created_at BIGINT NOT NULL,
+      PRIMARY KEY (game_type, game, round_slot),
+      KEY idx_game_round_executions_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+  `);
+
+  for (const table of ["wingo", "k3", "5d"]) {
+    await connection.execute(`
+      DELETE duplicate FROM \`${table}\` duplicate
+      INNER JOIN \`${table}\` keeper
+        ON duplicate.game = keeper.game
+       AND duplicate.period = keeper.period
+       AND duplicate.id != keeper.id
+       AND (
+         (duplicate.status = 0 AND keeper.status != 0)
+         OR (duplicate.status = keeper.status AND duplicate.id < keeper.id)
+         OR (duplicate.status != 0 AND keeper.status != 0 AND duplicate.id < keeper.id)
+       )
+    `);
+    await ensureUniqueIndex(table, `uq_${table}_game_period`, "`game`, `period`");
+  }
+
   await ensureColumn("minutes_1", "id_product", "`id_product` VARCHAR(64) DEFAULT NULL");
   await ensureColumn("minutes_1", "code", "`code` VARCHAR(64) DEFAULT NULL");
   await ensureColumn("minutes_1", "invite", "`invite` VARCHAR(64) DEFAULT NULL");

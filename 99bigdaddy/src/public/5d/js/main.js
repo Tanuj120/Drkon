@@ -164,9 +164,10 @@ function showResultNow(data) {
     }
     $(".round-num #total_r").text(total);
 }
-function callListOrder() {
+function callListOrder(silent = false) {
     GameHistoryClient.post({
         key: `5d-history-${$('html').attr('data-dpr')}`,
+        silent,
         url: "/api/webapi/5d/GetNoaverageEmerdList",
         data: {
             gameJoin: $('html').attr('data-dpr'),
@@ -188,6 +189,10 @@ function callListOrder() {
         }
     });
 }
+setInterval(() => {
+    const game = Number($('html').attr('data-dpr'));
+    if (pageno === 0 && $('#number_result').attr('data-select') === 'all' && GameHistoryClient.shouldPollRound(game)) callListOrder(true);
+}, 2000);
 
 callListOrder();
 
