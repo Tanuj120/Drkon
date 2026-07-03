@@ -484,7 +484,7 @@ const login = async (req, res) => {
                 });
             } else {
                 return res.status(200).json({
-                    message: 'Site is under maintainance mode',
+                    message: 'Error',
                     status: false
                 });
             }
