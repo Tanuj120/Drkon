@@ -146,7 +146,17 @@
         }
 
         .promotion .tab ul li.action {
-            color: #fff !important;
+            color: #1677c8 !important;
+            font-weight: 700;
+        }
+
+        #total-mem {
+            height: auto !important;
+            min-height: .90667rem;
+            padding: .18rem .3rem !important;
+            line-height: 1.45 !important;
+            text-align: center;
+            white-space: normal;
         }
 
         .promotion .table {
@@ -176,6 +186,7 @@
         .promotion .table .hd>div,
         .promotion .table .bd>div {
             padding: .16rem .06rem;
+            line-height: 1.25;
             white-space: normal;
             overflow: visible;
             text-overflow: clip;
@@ -395,7 +406,9 @@
                             item.invite_count = Number(item.invite_count || 0);
                             item.total_turn_over = item.total_turn_over || 0;
                             return item;
-                        });
+                        }).sort((firstUser, secondUser) =>
+                            Number(firstUser.user_level) - Number(secondUser.user_level)
+                        );
                         teamData = f1Data;
                         const totalTurnover = f1Data.reduce((total, item) => {
                             const turnover = parseFloat(item.total_turn_over);

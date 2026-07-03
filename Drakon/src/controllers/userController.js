@@ -381,13 +381,15 @@ const isSameDay = (timeValue) => {
 const buildReferralTeam = async (rootUser, maxLevel = REFERRAL_MAX_LEVEL) => {
     const rootCode = await ensureUserReferralCode(rootUser);
     const rootPhone = String(rootUser.phone || '');
-    const team = [];
     const levels = Array.from({ length: maxLevel + 1 }, () => []);
     const visitedPhones = new Set([rootPhone].filter(Boolean));
-    const visitedCodes = new Set([rootCode].filter(Boolean));
+    const expandedCodes = new Set();
+    const pendingCodes = rootCode ? [{ code: rootCode, level: 1 }] : [];
 
-    async function walk(parentCode, level) {
-        if (!parentCode || level > maxLevel) return;
+    while (pendingCodes.length > 0) {
+        const { code: parentCode, level } = pendingCodes.shift();
+        if (!parentCode || level > maxLevel || expandedCodes.has(parentCode)) continue;
+        expandedCodes.add(parentCode);
 
         const [rows] = await connection.query(
             'SELECT `id_user`, `name_user`, `phone`, `code`, `invite`, `rank`, `status`, `total_money`, `time` FROM users WHERE `invite` = ? ORDER BY id DESC',
@@ -418,17 +420,15 @@ const buildReferralTeam = async (rootUser, maxLevel = REFERRAL_MAX_LEVEL) => {
             };
 
             levels[level].push(teamUser);
-            team.push(teamUser);
 
             const childCode = String(row.code || '').trim();
-            if (childCode && !visitedCodes.has(childCode)) {
-                visitedCodes.add(childCode);
-                await walk(childCode, level + 1);
+            if (childCode && level < maxLevel && !expandedCodes.has(childCode)) {
+                pendingCodes.push({ code: childCode, level: level + 1 });
             }
         }
     }
 
-    await walk(rootCode, 1);
+    const team = levels.slice(1).flat();
 
     return {
         team,
