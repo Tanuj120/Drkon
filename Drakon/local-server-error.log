@@ -1,0 +1,2 @@
+[dev] SKIP_DB is true - using mock DB connection (no MySQL operations will run)
+[dev] SKIP_DB=true — cron jobs and admin socket initialization skipped for local testing

@@ -1,0 +1,10 @@
+[dev] SKIP_DB is true - using mock DB connection (no MySQL operations will run)
+[dev] SKIP_DB=true — cron jobs and admin socket initialization skipped for local testing
+file:///C:/Users/tulsy/Downloads/99bigdaddy/99bigdaddy/src/controllers/homeController.js:81
+    let level = user[0].level;
+                        ^
+
+TypeError: Cannot read properties of undefined (reading 'level')
+    at mianPage (file:///C:/Users/tulsy/Downloads/99bigdaddy/99bigdaddy/src/controllers/homeController.js:81:25)
+
+Node.js v24.15.0

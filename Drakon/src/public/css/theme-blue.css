@@ -1,0 +1,587 @@
+:root {
+  --theme-bg: #eaf5ff;
+  --theme-bg-soft: #f5fbff;
+  --theme-surface: #ffffff;
+  --theme-primary: #2d8fe5;
+  --theme-primary-2: #59bbff;
+  --theme-primary-dark: #1f73ca;
+  --theme-primary-soft: #dff0ff;
+  --theme-accent-soft: #ffe7e3;
+  --theme-accent-soft-2: #fff1ee;
+  --theme-accent: #ef8c87;
+  --theme-text: #1f2d3d;
+  --theme-muted: #6d7d96;
+  --theme-line: rgba(45, 143, 229, 0.16);
+  --theme-shadow: 0 8px 24px rgba(45, 143, 229, 0.12);
+}
+
+html,
+body,
+#app,
+.mian,
+.login__container,
+.register__container,
+.wallet-page {
+  background: var(--theme-bg) !important;
+  color: var(--theme-text) !important;
+}
+
+.navbar,
+.navbar-fixed,
+.topbar,
+.van-nav-bar,
+.login__container-heading,
+.register__container-heading,
+.mian .login-banner,
+.navbar.action[data-v-106b99c8] {
+  background: linear-gradient(90deg, var(--theme-primary-dark), var(--theme-primary-2)) !important;
+  color: #fff !important;
+}
+
+.navbar-title,
+.navbar__content-title,
+.login__container-heading__title,
+.register__container-heading__title,
+.login__container-heading__subTitle,
+.register__container-heading__subTitle,
+.topbar-title {
+  color: #fff !important;
+}
+
+.wallet-box .box,
+.fd-panel,
+.metrics,
+.section,
+.quick-link,
+.plan-card,
+.record-card,
+.phoneInput__container,
+.passwordInput__container,
+.signIn__container,
+.register__container-form,
+.login__container-form,
+.tab-content,
+.mian .login-box,
+.mian .forgot-box,
+.promotion__container,
+.about,
+.record-box,
+.card,
+.container-row,
+.van-popup,
+.van-dialog,
+.rule-box,
+.wallet,
+.wallet-box,
+.wallet-page .content > * {
+  background-color: var(--theme-surface) !important;
+  box-shadow: var(--theme-shadow) !important;
+}
+
+.van-tabbar,
+.bottom-nav,
+.tabbar__container,
+.nav {
+  background: #ffffff !important;
+  border-top: 1px solid var(--theme-line) !important;
+}
+
+.van-tabbar .van-tabbar-item,
+.bottom-nav-item,
+.tabbar__container-item span,
+.van-tabbar .name {
+  color: var(--theme-muted) !important;
+}
+
+.van-tabbar .van-tabbar-item.van-tabbar-item--active,
+.van-tabbar .name.action,
+.bottom-nav-item.active,
+.tabbar__container-item.active span {
+  color: var(--theme-primary) !important;
+}
+
+.van-tabbar .muan,
+.tabbar__container-item svg,
+.bottom-nav-icon {
+  filter: saturate(1.05);
+}
+
+.wallet .money,
+.balanceMoney,
+.summary-amount,
+.metric-value,
+.fd-stat-value,
+.plan-rate,
+.record-row .value.orange,
+.record-tag.out,
+.fd-history-status,
+.font30active,
+.phonefont30active {
+  color: var(--theme-primary) !important;
+}
+
+.metric-value.success,
+.record-row .value.green,
+.fd-history-status.matured,
+.summary-badge {
+  color: #ffffff !important;
+}
+
+.summary-card,
+.wallet-box .icon1,
+.wallet .box .icon1,
+.game__item,
+.list-banner .van-swipe-item,
+.home__container-swiper,
+.home-lottery-card,
+.wallet-page .summary-card {
+  background: linear-gradient(135deg, var(--theme-primary-dark), var(--theme-primary-2)) !important;
+  color: #fff !important;
+}
+
+.list-banner .van-swipe-item *,
+.summary-card *,
+.game__item *,
+.home-lottery-card * {
+  color: #fff !important;
+}
+
+.home__container,
+.game__container,
+.lottery,
+.lottery-list,
+.all-lottery,
+.list-banner,
+.type-nav,
+.notice-box,
+.home__container-content,
+.wallet-page .content {
+  background: transparent !important;
+}
+
+.notice-box,
+.marquee,
+.home-notice,
+.van-notice-bar,
+.learn-link {
+  background: #ffffff !important;
+  color: var(--theme-text) !important;
+  border-radius: 999px !important;
+}
+
+.detail,
+.van-button--primary,
+.action-button.primary,
+.fd-button,
+.btn-primary,
+.gradient,
+.signIn__container-button .active,
+#fdCreateButton,
+#fdCreateAction,
+.register,
+.mian-btn .gradient {
+  background: linear-gradient(90deg, var(--theme-primary), var(--theme-primary-2)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+.action-button.secondary,
+#fdWithdrawAction,
+.signIn__container-button .register,
+.login,
+.btn-outline-primary,
+.dialogBtn,
+.fd-withdraw-button {
+  background: var(--theme-primary-soft) !important;
+  color: var(--theme-primary) !important;
+  border: 1px solid var(--theme-primary) !important;
+}
+
+input,
+select,
+textarea,
+.fd-input,
+.amount-input,
+.passwordInput__container-input,
+.phoneInput__container-input,
+.emailinput__container-input,
+.item input {
+  background: #ffffff !important;
+  color: var(--theme-text) !important;
+  border-color: var(--theme-line) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9eb3c9 !important;
+}
+
+.fd-plan,
+.plan-card,
+.images_21,
+.tab,
+.dropdown__value,
+.phoneInput__container-input,
+.passwordInput__container-input,
+.emailinput__container-input,
+.wallet .info .item,
+.record-tag.in {
+  background: var(--theme-accent-soft-2) !important;
+  border-color: rgba(239, 140, 135, 0.24) !important;
+}
+
+.fd-plan.active,
+.plan-card.active,
+.tab.active,
+.phoneactive {
+  background: var(--theme-primary-soft) !important;
+  border-color: var(--theme-primary) !important;
+}
+
+.images_21,
+.quick-link,
+.mini-games,
+.popular,
+.slots,
+.fishing,
+.pvc,
+.game-category,
+.game-left-card,
+.all-lottery .item {
+  background: var(--theme-accent-soft) !important;
+  color: var(--theme-text) !important;
+}
+
+.images_21.active,
+.quick-link.active,
+.lottery.active,
+.all-lottery .item.active,
+.game-category.active {
+  background: linear-gradient(180deg, var(--theme-primary), var(--theme-primary-dark)) !important;
+  color: #fff !important;
+}
+
+.images_21.active p,
+.quick-link.active,
+.lottery.active *,
+.all-lottery .item.active *,
+.game-category.active * {
+  color: #fff !important;
+}
+
+.section-title,
+.fd-title,
+.wallet-user .title,
+.metric-label,
+.record-row .label,
+.plan-note,
+.fd-plan-note,
+.fd-subtitle,
+.notice,
+.wallet .title,
+.wallet .info,
+.login_container-tab .tab,
+.tabbar__container-item,
+.images_21 p {
+  color: var(--theme-text) !important;
+}
+
+.van-checkbox__label,
+.remember,
+.agree,
+.txt,
+.font24,
+.lang-text,
+.wallet-user,
+.info,
+.name {
+  color: var(--theme-muted) !important;
+}
+
+.van-checkbox__icon--checked .van-icon,
+.van-radio__icon--checked .van-icon,
+.record-tag.in,
+.summary-badge,
+.dropdown__list-item.active {
+  background: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
+  color: #fff !important;
+}
+
+.dialog__container,
+.popups,
+.alert-toast .msg-content {
+  background: #ffffff !important;
+  color: var(--theme-text) !important;
+  border-radius: 16px !important;
+}
+
+.dialog__container-title h1,
+.msg-content,
+.alert-toast {
+  color: var(--theme-text) !important;
+}
+
+.van-overlay,
+.Loading {
+  background: rgba(120, 174, 224, 0.35) !important;
+}
+
+.game-box,
+.home-game-card,
+.all-lottery .item-right,
+.item-right,
+.box,
+.record-card {
+  border: 1px solid var(--theme-line) !important;
+}
+
+a,
+.learn-link,
+.detail,
+.tab.active,
+.phonefont30active,
+.wallet-page button,
+.tabbar__container-item.active,
+.record-tag.out {
+  color: var(--theme-primary) !important;
+}
+
+.summary-card .summary-badge,
+.record-tag.in,
+.action-button.primary,
+#fdCreateButton,
+#fdCreateAction {
+  color: #fff !important;
+}
+
+body[style],
+html[style],
+#app[style] {
+  background: var(--theme-bg) !important;
+}
+
+.van-dialog1,
+.van-dialog2,
+.promptHeadear,
+.promptHeader,
+.van-button__text {
+  color: var(--theme-text) !important;
+}
+
+.van-dialog1,
+.van-dialog2 {
+  background: #ffffff !important;
+}
+
+.promptHeader {
+  background: linear-gradient(90deg, var(--theme-primary), var(--theme-primary-2)) !important;
+  color: #fff !important;
+}
+
+.promptHeadear,
+.van-button__text {
+  background: linear-gradient(90deg, #fef3ee, #ffe6e0) !important;
+  border: 1px solid rgba(239, 140, 135, 0.28) !important;
+}
+
+.noticeBar__container,
+.noticeBar__container-body,
+.noticeBar__container-body-text,
+.home__container-content,
+.gamesList__container,
+.gameListGrid__container,
+.lottery_container,
+.lottery_container-list,
+.lotterySlotItem,
+.game_item,
+.game-item,
+.gameListCard__container,
+.SuperJackpot__container,
+.winningInfo__container,
+.rankingList__container,
+.home .swiper,
+.home .swiper-slide {
+  background: transparent !important;
+  color: var(--theme-text) !important;
+}
+
+.gamesList__container-title,
+.rankingList__container-title,
+.SuperJackpot__container-title,
+.winningInfo__container-title,
+.lottery_container-tab {
+  color: var(--theme-primary-dark) !important;
+}
+
+.lotterySlotItem,
+.home__container .lotterySlotItem,
+.gameListCard__container-item,
+.gameListCard__container > div,
+.home__container .all_container > div,
+.home__container .gamesList__container .item {
+  background: linear-gradient(135deg, var(--theme-primary-dark), var(--theme-primary-2)) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--theme-shadow) !important;
+}
+
+.lotterySlotItem *,
+.gameListCard__container-item *,
+.gameListCard__container > div *,
+.home__container .all_container > div * {
+  color: #fff !important;
+}
+
+.tabbar__container,
+.tabbar__container-item,
+.tabbar__container-item-active,
+.tabbar__container-item > div {
+  background: #ffffff !important;
+}
+
+.tabbar__container {
+  border-top: 1px solid var(--theme-line) !important;
+  box-shadow: 0 -8px 22px rgba(45, 143, 229, 0.08) !important;
+}
+
+.tabbar__container-item span,
+.tabbar__container-item p,
+.tabbar__container-item div {
+  color: var(--theme-muted) !important;
+}
+
+.tabbar__container-item.active span,
+.tabbar__container-item.active p,
+.tabbar__container-item.active div,
+.tabbar__container-item.action span,
+.tabbar__container-item.action p,
+.tabbar__container-item.action div {
+  color: var(--theme-primary) !important;
+}
+
+.mian.page,
+.menu-box,
+.total-box,
+.list,
+.logout-btn,
+.profile,
+.infoItem,
+.list > .item,
+.list .item.c-row,
+.state-box,
+.info.p-t-30,
+.infoName,
+.user-img,
+.van-dialog {
+  background: transparent !important;
+}
+
+.member__container,
+.menu-box .info,
+.total-box .infoItem,
+.list > .item,
+.list .item.c-row,
+.logout,
+.van-dialog__content,
+.van-dialog__footer {
+  background: #ffffff !important;
+  box-shadow: var(--theme-shadow) !important;
+  border-color: var(--theme-line) !important;
+}
+
+.total-box .infoItem,
+.list > .item,
+.list .item.c-row {
+  border-radius: 16px !important;
+}
+
+.total-box .infoItem {
+  background: linear-gradient(180deg, #ffffff 0%, #eef7ff 100%) !important;
+}
+
+.total-box .infoItem .item,
+.logout {
+  background: var(--theme-primary-soft) !important;
+  border: 1px solid var(--theme-line) !important;
+}
+
+.total-box .infoItem .item span,
+.total-box .infoItem .item div,
+.list .item .name,
+.des,
+.number,
+.id,
+.logout .van-button__text,
+.van-dialog__cancel .van-button__text,
+.van-dialog__confirm .van-button__text {
+  color: var(--theme-text) !important;
+}
+
+.money,
+#Balance,
+#balance_show,
+.name.mb3,
+.profile i,
+.list .item i,
+.logout i {
+  color: var(--theme-primary) !important;
+  --fa-primary-color: var(--theme-primary) !important;
+  --fa-secondary-color: var(--theme-primary) !important;
+}
+
+.logout {
+  color: var(--theme-primary) !important;
+  border-radius: 999px !important;
+}
+
+.van-dialog__cancel,
+.van-dialog__confirm {
+  background: #ffffff !important;
+  border-color: var(--theme-line) !important;
+}
+
+.van-dialog__confirm {
+  background: linear-gradient(90deg, var(--theme-primary), var(--theme-primary-2)) !important;
+}
+
+.van-dialog__confirm .van-button__text {
+  background: transparent !important;
+  border: 0 !important;
+  color: #fff !important;
+}
+
+.van-dialog__cancel .van-button__text {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--theme-primary) !important;
+}
+
+.msg,
+.alert-toast .msg,
+[data-v-1dcba851].msg {
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.msg .msg-content,
+.alert-toast .msg-content,
+[data-v-1dcba851].msg-content,
+.msg-content[data-v-1dcba851],
+.van-toast,
+.van-toast__text {
+  background: rgba(13, 31, 51, 0.94) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  text-shadow: none !important;
+  box-shadow: 0 8px 24px rgba(13, 31, 51, 0.28) !important;
+}
+
+.msg .msg-content *,
+.alert-toast .msg-content *,
+.van-toast *,
+.van-toast__text * {
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
