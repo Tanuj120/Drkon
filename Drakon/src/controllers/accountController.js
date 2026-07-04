@@ -779,26 +779,44 @@ const forGotPassword = async (req, res) => {
 }
 
 const keFuMenu = async (req, res) => {
-    let auth = req.cookies.auth;
-
-    const [users] = await connection.query('SELECT `level`, `ctv` FROM users WHERE token = ?', [auth]);
-
     let telegram = '';
-    if (users.length == 0) {
-        let [settings] = await connection.query('SELECT `telegram`, `cskh` FROM admin');
-        telegram = settings[0].telegram;
-    } else {
-        if (users[0].level != 0) {
-            var [settings] = await connection.query('SELECT * FROM admin');
-        } else {
-            var [check] = await connection.query('SELECT `telegram` FROM point_list WHERE phone = ?', [users[0].ctv]);
-            if (check.length == 0) {
-                var [settings] = await connection.query('SELECT * FROM admin');
-            } else {
-                var [settings] = await connection.query('SELECT `telegram` FROM point_list WHERE phone = ?', [users[0].ctv]);
-            }
+
+    try {
+        const auth = req.cookies.auth;
+        let user;
+
+        if (auth) {
+            const userColumns = await getTableColumns('users');
+            const selectedColumns = ['`level`'];
+            if (userColumns?.has('ctv')) selectedColumns.push('`ctv`');
+
+            const [users] = await connection.query(
+                `SELECT ${selectedColumns.join(', ')} FROM users WHERE token = ? LIMIT 1`,
+                [auth]
+            );
+            user = users[0];
         }
-        telegram = settings[0].telegram;
+
+        if (user && Number(user.level) === 0 && user.ctv) {
+            const [pointListRows] = await connection.query(
+                'SELECT `telegram` FROM point_list WHERE phone = ? LIMIT 1',
+                [user.ctv]
+            );
+            telegram = pointListRows[0]?.telegram || '';
+        }
+
+        if (!telegram) {
+            const [settings] = await connection.query('SELECT `telegram`, `cskh` FROM admin LIMIT 1');
+            telegram = settings[0]?.telegram || settings[0]?.cskh || '';
+        }
+    } catch (error) {
+        console.error('Customer service page load failed:', error);
+        try {
+            const [settings] = await connection.query('SELECT `telegram`, `cskh` FROM admin LIMIT 1');
+            telegram = settings[0]?.telegram || settings[0]?.cskh || '';
+        } catch (fallbackError) {
+            console.error('Customer service fallback failed:', fallbackError);
+        }
     }
 
     return res.render("keFuMenu.ejs", { telegram });
