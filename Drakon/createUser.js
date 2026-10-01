@@ -141,7 +141,7 @@ async function ensureBootstrapReferrer(connection, userColumns, pointListColumns
   if (existingByPhone.length > 0) {
     await updateRow(
       connection,
-      'users',
+      'users',  
       userColumns,
       {
         code: BOOTSTRAP_CODE,
