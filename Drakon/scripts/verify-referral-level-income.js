@@ -3,12 +3,17 @@ import md5 from "md5";
 
 dotenv.config();
 
+if (process.env.RUN_LIVE_REFERRAL_TEST !== 'true') {
+  throw new Error('This script writes test records to MySQL. Set RUN_LIVE_REFERRAL_TEST=true only on an isolated test database.');
+}
+
 const { default: connection } = await import("../src/config/connectDB.js");
 const { default: userController } = await import("../src/controllers/userController.js");
 
 const numericPrefix = `98${Date.now().toString().slice(-8)}`;
 const codePrefix = `TESTREF${Date.now()}`;
-const percentages = [5, 3, 2, 1, 1, 1, 1, 1];
+const ninetyPercentages = [5, 3, 2, 1, 1, 1, 1, 1, ...Array(12).fill(0.2)];
+const thirtyPercentages = [1, 0.5, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, ...Array(12).fill(0.1)];
 const packageAmount = 1000;
 
 const runQuery = async (sql, params = []) => connection.query(sql, params);
@@ -56,7 +61,7 @@ const ensureColumns = async () => {
 
 const createTestUsers = async () => {
   const users = [];
-  for (let index = 1; index <= 10; index++) {
+  for (let index = 1; index <= 22; index++) {
     const phone = `${numericPrefix}${String(index).padStart(2, "0")}`;
     const code = `${codePrefix}C${String(index).padStart(2, "0")}`;
     const invite = index === 1 ? `${codePrefix}ROOT` : users[index - 2].code;
@@ -79,7 +84,7 @@ const createTestUsers = async () => {
         0,
         1,
         1,
-        index === 10 ? packageAmount : 0,
+        index === 22 ? packageAmount : 0,
         0,
         0,
         0,
@@ -116,7 +121,7 @@ const main = async () => {
   await ensureColumns();
 
   const users = await createTestUsers();
-  const buyer = users[9];
+  const buyer = users[21];
   const response = fakeResponse();
 
   await userController.createFixedDeposit(
@@ -137,27 +142,28 @@ const main = async () => {
 
   const transactionId = `COPY_GAMING_90_${deposit.id}`;
   const [incomeRows] = await runQuery("SELECT * FROM referral_level_income WHERE transaction_id = ? ORDER BY level_no ASC", [transactionId]);
-  assertCondition(incomeRows.length === 8, `Expected 8 income rows, got ${incomeRows.length}`);
+  assertCondition(incomeRows.length === 20, `Expected 20 income rows, got ${incomeRows.length}`);
 
-  for (let index = 0; index < percentages.length; index++) {
+  for (let index = 0; index < ninetyPercentages.length; index++) {
     const row = incomeRows[index];
-    const expectedReceiver = users[8 - index];
-    const expectedAmount = Number(((packageAmount * percentages[index]) / 100).toFixed(2));
+    const expectedReceiver = users[20 - index];
+    const expectedAmount = Number(((packageAmount * ninetyPercentages[index]) / 100).toFixed(2));
     assertCondition(Number(row.level_no) === index + 1, `Wrong level at row ${index + 1}`);
     assertCondition(row.to_phone === expectedReceiver.phone, `Level ${index + 1} paid ${row.to_phone}, expected ${expectedReceiver.phone}`);
+    assertCondition(Number(row.percentage) === ninetyPercentages[index], `Wrong 90-day rate at level ${index + 1}`);
     assertCondition(Number(row.income_amount) === expectedAmount, `Level ${index + 1} amount ${row.income_amount}, expected ${expectedAmount}`);
   }
 
   const [paidUsers] = await runQuery("SELECT phone, money, roses_f, roses_f1, roses_today FROM users WHERE phone LIKE ? ORDER BY phone ASC", [`${numericPrefix}%`]);
   const byPhone = Object.fromEntries(paidUsers.map((user) => [user.phone, user]));
 
-  for (let index = 0; index < percentages.length; index++) {
-    const receiver = users[8 - index];
-    const expectedAmount = Number(((packageAmount * percentages[index]) / 100).toFixed(2));
+  for (let index = 0; index < ninetyPercentages.length; index++) {
+    const receiver = users[20 - index];
+    const expectedAmount = Number(((packageAmount * ninetyPercentages[index]) / 100).toFixed(2));
     assertCondition(Number(byPhone[receiver.phone].money) === expectedAmount, `Wallet mismatch for ${receiver.phone}`);
   }
 
-  assertCondition(Number(byPhone[users[0].phone].money) === 0, "Level 9/root user should not receive income");
+  assertCondition(Number(byPhone[users[0].phone].money) === 0, "Level 21/root user should not receive income");
   assertCondition(Number(byPhone[buyer.phone].money) === 0, "Buyer wallet should only be debited by package amount");
 
   const [duplicateResult] = await runExecute(
@@ -178,8 +184,16 @@ const main = async () => {
     nonReferralResponse,
   );
   assertCondition(nonReferralResponse.result.body?.status === true, `30-day package failed: ${JSON.stringify(nonReferralResponse.result.body)}`);
-  const [allIncomeAfter30Day] = await runQuery("SELECT * FROM referral_level_income WHERE from_phone = ?", [buyer.phone]);
-  assertCondition(allIncomeAfter30Day.length === 8, "30-day package should not create referral income");
+  const thirtyDayDeposit = nonReferralResponse.result.body.data.history.find((record) => Number(record.tenureDays) === 30);
+  const [thirtyDayIncome] = await runQuery("SELECT * FROM referral_level_income WHERE transaction_id = ? ORDER BY level_no ASC", [`COPY_GAMING_30_${thirtyDayDeposit.id}`]);
+  assertCondition(thirtyDayIncome.length === 20, `Expected 20 30-day income rows, got ${thirtyDayIncome.length}`);
+  for (let index = 0; index < thirtyPercentages.length; index++) {
+    const row = thirtyDayIncome[index];
+    assertCondition(Number(row.level_no) === index + 1, `Wrong 30-day level at row ${index + 1}`);
+    assertCondition(row.to_phone === users[20 - index].phone, `Wrong 30-day recipient at level ${index + 1}`);
+    assertCondition(Number(row.percentage) === thirtyPercentages[index], `Wrong 30-day rate at level ${index + 1}`);
+    assertCondition(Number(row.income_amount) === Number(((packageAmount * thirtyPercentages[index]) / 100).toFixed(2)), `Wrong 30-day amount at level ${index + 1}`);
+  }
 
   const selfPhone = `${numericPrefix}99`;
   const selfCode = `${codePrefix}SELF`;
@@ -224,7 +238,7 @@ const main = async () => {
   console.log({
     transactionId,
     levelsPaid: incomeRows.length,
-    thirtyDayReferralRows: allIncomeAfter30Day.length - incomeRows.length,
+    thirtyDayReferralRows: thirtyDayIncome.length,
     selfReferralRows: selfIncomeRows.length,
     payouts: incomeRows.map((row) => ({
       level: row.level_no,

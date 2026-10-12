@@ -107,8 +107,31 @@ try {
     const promotionPage = await promotionPageResponse.text();
     assert.match(promotionPage, /Referral Commission For 30 Days Copy Gaming/);
     assert.match(promotionPage, /Referral Commission For 90 Days Copy Gaming/);
+    assert.equal((promotionPage.match(/Level 20 Team/g) || []).length, 2);
+    assert.match(promotionPage, /Level 20 Team[\s\S]*?0\.1%[\s\S]*?30 Days/);
+    assert.match(promotionPage, /Level 20 Team[\s\S]*?0\.2%[\s\S]*?90 Days/);
 
-    console.log('Copy Gaming HTTP verification passed: login, purchases, history, amount validation, and rendered pages.');
+    const teamPageResponse = await fetch(`${baseUrl}/promotion/myTeam`, {
+        headers: { cookie: `auth=${login.value}` },
+    });
+    assert.equal(teamPageResponse.status, 200);
+    assert.match(await teamPageResponse.text(), /<option value="20">Level 20<\/option>/);
+
+    const tutorialPageResponse = await fetch(`${baseUrl}/promotion/tutorial`, {
+        headers: { cookie: `auth=${login.value}` },
+    });
+    assert.equal(tutorialPageResponse.status, 200);
+    const tutorialPage = await tutorialPageResponse.text();
+    assert.equal((tutorialPage.match(/Level 20 Team/g) || []).length, 2);
+
+    const adminReportResponse = await fetch(`${baseUrl}/admin/manager/copyGamingCommissions?plan=90&level=1`);
+    assert.equal(adminReportResponse.status, 200);
+    const adminReport = await adminReportResponse.text();
+    assert.match(adminReport, /Copy Gaming Level Commissions/);
+    assert.match(adminReport, /COPY_GAMING_90_/);
+    assert.match(adminReport, /<option value="20"/);
+
+    console.log('Copy Gaming HTTP verification passed: purchases, histories, twenty-level customer pages, and admin report.');
 } finally {
     server.kill();
     await new Promise((resolve) => {

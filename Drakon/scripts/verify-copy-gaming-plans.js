@@ -98,10 +98,10 @@ class FakeReferralDatabase {
 
 const planByDays = (days) => FIXED_DEPOSIT_PLANS.find((plan) => Number(plan.days) === Number(days));
 
-const buildReferralChain = () => Array.from({ length: 9 }, (_, index) => ({
-    phone: `900000000${index + 1}`,
+const buildReferralChain = () => Array.from({ length: 21 }, (_, index) => ({
+    phone: `9000000${String(index + 1).padStart(3, '0')}`,
     code: `LEVEL${index + 1}`,
-    invite: index < 8 ? `LEVEL${index + 2}` : '',
+    invite: index < 20 ? `LEVEL${index + 2}` : '',
 }));
 
 const verifyPlanValues = ({ days, dailyRate, interest, maturity }) => {
@@ -139,12 +139,13 @@ const verifyReferralPlan = async ({ days, expectedPercentages, expectedIncome })
         levelPercentages: plan.levelPercentages,
     });
 
-    assert.equal(credited.length, 8);
-    assert.deepEqual(credited.map((item) => item.level), [1, 2, 3, 4, 5, 6, 7, 8]);
+    assert.equal(credited.length, 20);
+    assert.deepEqual(credited.map((item) => item.level), Array.from({ length: 20 }, (_, index) => index + 1));
     assert.deepEqual(credited.map((item) => item.percentage), expectedPercentages);
     assert.deepEqual(credited.map((item) => item.amount), expectedIncome);
     assert.equal(formatMoney(credited.reduce((total, item) => total + item.amount, 0)), formatMoney(expectedIncome.reduce((total, amount) => total + amount, 0)));
-    assert.equal(database.users.find((user) => user.code === 'LEVEL9').money, 0, 'Level 9 must never receive income');
+    assert.equal(formatMoney(credited.reduce((total, item) => total + item.amount, 0)), days === 30 ? 42 : 174);
+    assert.equal(database.users.find((user) => user.code === 'LEVEL21').money, 0, 'Level 21 must never receive income');
 
     const balancesBeforeDuplicate = database.users.map((user) => user.money);
     const duplicateCredits = await distributeCopyGamingLevelIncome(database, {
@@ -188,14 +189,14 @@ verifyPlanValues({ days: 30, dailyRate: 0.51, interest: 153, maturity: 1153 });
 verifyPlanValues({ days: 90, dailyRate: 1.11, interest: 999, maturity: 1999 });
 await verifyReferralPlan({
     days: 30,
-    expectedPercentages: [1, 0.5, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25],
-    expectedIncome: [10, 5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5],
+    expectedPercentages: [1, 0.5, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, ...Array(12).fill(0.1)],
+    expectedIncome: [10, 5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, ...Array(12).fill(1)],
 });
 await verifyReferralPlan({
     days: 90,
-    expectedPercentages: [5, 3, 2, 1, 1, 1, 1, 1],
-    expectedIncome: [50, 30, 20, 10, 10, 10, 10, 10],
+    expectedPercentages: [5, 3, 2, 1, 1, 1, 1, 1, ...Array(12).fill(0.2)],
+    expectedIncome: [50, 30, 20, 10, 10, 10, 10, 10, ...Array(12).fill(2)],
 });
 await verifyCycleProtection();
 
-console.log('Copy Gaming verification passed: plans, maturity, eight levels, duplicates, and cycle protection.');
+console.log('Copy Gaming verification passed: both plans, maturity, twenty levels, duplicates, and cycle protection.');

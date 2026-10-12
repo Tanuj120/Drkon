@@ -1,4 +1,5 @@
 import connection from "../config/connectDB.js";
+import { REFERRAL_MAX_LEVEL } from "../config/copyGamingPlans.js";
 import jwt from 'jsonwebtoken'
 import md5 from "md5";
 import dotenv from 'dotenv';
@@ -147,6 +148,77 @@ const CreatedSalaryRecord = async (req, res) => {
 
 const withdrawRecord = async (req, res) => {
     return res.render("manage/withdrawRecord.ejs");
+}
+
+const copyGamingCommissions = async (req, res) => {
+    const plan = [30, 90].includes(Number(req.query.plan)) ? Number(req.query.plan) : 0;
+    const level = Number(req.query.level);
+    const selectedLevel = Number.isInteger(level) && level >= 1 && level <= REFERRAL_MAX_LEVEL ? level : 0;
+    const phone = String(req.query.phone || '').trim().slice(0, 20);
+    const fromDateInput = String(req.query.fromDate || '');
+    const toDateInput = String(req.query.toDate || '');
+    const fromDate = /^\d{4}-\d{2}-\d{2}$/.test(fromDateInput) && Number.isFinite(Date.parse(`${fromDateInput}T00:00:00+05:30`)) ? fromDateInput : '';
+    const toDate = /^\d{4}-\d{2}-\d{2}$/.test(toDateInput) && Number.isFinite(Date.parse(`${toDateInput}T00:00:00+05:30`)) ? toDateInput : '';
+    const requestedPage = Number.parseInt(req.query.page, 10);
+    const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const pageSize = 50;
+    const conditions = [];
+    const params = [];
+
+    if (plan) {
+        conditions.push('transaction_id LIKE ?');
+        params.push(`COPY_GAMING_${plan}_%`);
+    }
+    if (selectedLevel) {
+        conditions.push('level_no = ?');
+        params.push(selectedLevel);
+    }
+    if (phone) {
+        conditions.push('(from_phone = ? OR to_phone = ?)');
+        params.push(phone, phone);
+    }
+    if (fromDate) {
+        conditions.push('created_at >= ?');
+        params.push(Date.parse(`${fromDate}T00:00:00+05:30`));
+    }
+    if (toDate) {
+        conditions.push('created_at < ?');
+        params.push(Date.parse(`${toDate}T00:00:00+05:30`) + 86400000);
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const [summaryRows] = await connection.query(
+        `SELECT COUNT(*) AS count, COALESCE(SUM(income_amount), 0) AS total_amount FROM referral_level_income ${where}`,
+        params
+    );
+    const totalRecords = Number(summaryRows[0]?.count || 0);
+    const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const [rows] = await connection.query(
+        `SELECT * FROM referral_level_income ${where} ORDER BY id DESC LIMIT ? OFFSET ?`,
+        [...params, pageSize, (currentPage - 1) * pageSize]
+    );
+    const query = new URLSearchParams();
+    if (plan) query.set('plan', String(plan));
+    if (selectedLevel) query.set('level', String(selectedLevel));
+    if (phone) query.set('phone', phone);
+    if (fromDate) query.set('fromDate', fromDate);
+    if (toDate) query.set('toDate', toDate);
+
+    return res.render('manage/copyGamingCommissions.ejs', {
+        rows,
+        plan,
+        selectedLevel,
+        phone,
+        fromDate,
+        toDate,
+        totalRecords,
+        totalAmount: Number(summaryRows[0]?.total_amount || 0),
+        currentPage,
+        totalPages,
+        maxLevel: REFERRAL_MAX_LEVEL,
+        queryString: query.toString(),
+    });
 }
 const settings = async (req, res) => {
     return res.render("manage/settings.ejs");
@@ -2124,6 +2196,7 @@ export default {
     rechargeDuyet,
     rechargeRecord,
     withdrawRecord,
+    copyGamingCommissions,
     withdraw,
     levelSetting,
     handlWithdraw,

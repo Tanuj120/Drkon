@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Copy Gaming Commissions - Drakon</title>
+    <link rel="stylesheet" href="/plugins/fontawesome-free/css/all.min.css">
+    <link rel="stylesheet" href="/dist/css/adminlte.min.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="hold-transition sidebar-mini">
+    <div class="wrapper">
+        <%- include('nav') %>
+        <div class="content-wrapper">
+            <section class="content-header">
+                <div class="container-fluid"><h1>Copy Gaming Level Commissions</h1></div>
+            </section>
+            <section class="content px-3 pb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <form method="get" class="form-row align-items-end" action="/admin/manager/copyGamingCommissions">
+                            <div class="form-group col-sm-2">
+                                <label for="plan">Plan</label>
+                                <select class="form-control" name="plan" id="plan">
+                                    <option value="">Both plans</option>
+                                    <option value="30" <%= plan === 30 ? 'selected' : '' %>>30 days</option>
+                                    <option value="90" <%= plan === 90 ? 'selected' : '' %>>90 days</option>
+                                </select>
+                            </div>
+                            <div class="form-group col-sm-2">
+                                <label for="level">Level</label>
+                                <select class="form-control" name="level" id="level">
+                                    <option value="">All levels</option>
+                                    <% for (let levelNumber = 1; levelNumber <= maxLevel; levelNumber++) { %>
+                                        <option value="<%= levelNumber %>" <%= selectedLevel === levelNumber ? 'selected' : '' %>>Level <%= levelNumber %></option>
+                                    <% } %>
+                                </select>
+                            </div>
+                            <div class="form-group col-sm-3">
+                                <label for="phone">Buyer or recipient phone</label>
+                                <input class="form-control" name="phone" id="phone" value="<%= phone %>" placeholder="Exact phone number">
+                            </div>
+                            <div class="form-group col-sm-2">
+                                <label for="fromDate">From date</label>
+                                <input class="form-control" type="date" name="fromDate" id="fromDate" value="<%= fromDate %>">
+                            </div>
+                            <div class="form-group col-sm-2">
+                                <label for="toDate">To date</label>
+                                <input class="form-control" type="date" name="toDate" id="toDate" value="<%= toDate %>">
+                            </div>
+                            <div class="form-group col-sm-1"><button type="submit" class="btn btn-primary">Filter</button></div>
+                        </form>
+                        <p class="mb-1"><strong><%= totalRecords %></strong> commission records</p>
+                        <p class="mb-0">Total credited for these filters: <strong>₹<%= totalAmount.toFixed(2) %></strong></p>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-striped table-sm text-nowrap">
+                            <thead><tr>
+                                <th>Date (India)</th><th>Plan</th><th>Level</th><th>Buyer</th><th>Recipient</th>
+                                <th>Package</th><th>Rate</th><th>Commission</th><th>Transaction ID</th><th>Status</th>
+                            </tr></thead>
+                            <tbody>
+                                <% rows.forEach((row) => { %>
+                                    <tr>
+                                        <td><%= new Date(Number(row.created_at)).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) %></td>
+                                        <td><%= String(row.transaction_id).match(/^COPY_GAMING_(30|90)_/)?.[1] || '—' %> days</td>
+                                        <td><%= row.level_no %></td>
+                                        <td><%= row.from_phone %></td>
+                                        <td><%= row.to_phone %></td>
+                                        <td>₹<%= Number(row.package_amount).toFixed(2) %></td>
+                                        <td><%= row.percentage %>%</td>
+                                        <td>₹<%= Number(row.income_amount).toFixed(2) %></td>
+                                        <td><%= row.transaction_id %></td>
+                                        <td><%= row.status %></td>
+                                    </tr>
+                                <% }); %>
+                                <% if (rows.length === 0) { %>
+                                    <tr><td colspan="10" class="text-center py-4">No commissions found.</td></tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer d-flex justify-content-between align-items-center">
+                        <span>Page <%= currentPage %> of <%= totalPages %></span>
+                        <div>
+                            <% if (currentPage > 1) { %>
+                                <a class="btn btn-sm btn-outline-primary" href="?page=<%= currentPage - 1 %><%= queryString ? '&' + queryString : '' %>">Previous</a>
+                            <% } %>
+                            <% if (currentPage < totalPages) { %>
+                                <a class="btn btn-sm btn-outline-primary" href="?page=<%= currentPage + 1 %><%= queryString ? '&' + queryString : '' %>">Next</a>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+    <script src="/plugins/jquery/jquery.min.js"></script>
+    <script src="/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="/dist/js/adminlte.min.js"></script>
+</body>
+</html>

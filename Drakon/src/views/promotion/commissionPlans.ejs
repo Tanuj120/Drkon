@@ -1,0 +1,21 @@
+<% copyGamingPlans.forEach((plan) => { %>
+    <div class="tit c-row c-row-between commission-plan-title<%= plan.days === 30 ? ' plan-30' : '' %>">
+        Referral Commission For <%= plan.days %> Days Copy Gaming
+    </div>
+    <div class="table<%= plan.days === 30 ? ' commission-table-30' : '' %>">
+        <div class="hd van-row">
+            <div class="c-tc van-ellipsis van-col van-col--6">Total Levels</div>
+            <div class="c-tc van-ellipsis van-col van-col--6">Income From</div>
+            <div class="c-tc van-ellipsis van-col van-col--6">Commission</div>
+            <div class="c-tc van-ellipsis van-col van-col--6">Package</div>
+        </div>
+        <% plan.levelPercentages.forEach((percentage, index) => { %>
+            <div class="bd van-row">
+                <div class="c-tc van-col van-col--6">Level <%= index + 1 %></div>
+                <div class="c-tc van-col van-col--6"><%= index === 0 ? 'Direct Referral' : `Level ${index + 1} Team` %></div>
+                <div class="c-tc van-col van-col--6"><%= percentage %>%</div>
+                <div class="c-tc van-col van-col--6"><%= plan.days %> Days</div>
+            </div>
+        <% }); %>
+    </div>
+<% }); %>

@@ -220,6 +220,7 @@ const initWebRouter = (app) => {
     router.get('/admin/manager/CreatedSalaryRecord', adminController.middlewareAdminController, adminController.CreatedSalaryRecord);
     router.get('/admin/manager/rechargeRecord', adminController.middlewareAdminController, adminController.rechargeRecord); // get info account
     router.get('/admin/manager/withdrawRecord', adminController.middlewareAdminController, adminController.withdrawRecord); // get info account
+    router.get('/admin/manager/copyGamingCommissions', adminController.middlewareAdminController, adminController.copyGamingCommissions);
     router.get('/admin/manager/statistical', adminController.middlewareAdminController, adminController.statistical); // get info account
     router.get('/admin/member/info/:id', adminController.middlewareAdminController, adminController.infoMember);
     router.get('/api/webapi/admin/getLevelInfo', adminController.middlewareAdminController, adminController.getLevelInfo);

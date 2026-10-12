@@ -515,6 +515,37 @@ const createMockConnection = () => {
   };
 
   const selectReferralLevelIncome = (sql, params = []) => {
+    if (/total_amount|order by id desc limit \? offset \?/i.test(sql)) {
+      let parameterIndex = 0;
+      let rows = [...referralLevelIncome];
+      if (/transaction_id like \?/i.test(sql)) {
+        const prefix = String(params[parameterIndex++]).replace(/%$/, '');
+        rows = rows.filter((row) => row.transaction_id.startsWith(prefix));
+      }
+      if (/level_no = \?/i.test(sql)) {
+        const level = Number(params[parameterIndex++]);
+        rows = rows.filter((row) => Number(row.level_no) === level);
+      }
+      if (/from_phone = \? or to_phone = \?/i.test(sql)) {
+        const fromPhone = params[parameterIndex++];
+        const toPhone = params[parameterIndex++];
+        rows = rows.filter((row) => row.from_phone === fromPhone || row.to_phone === toPhone);
+      }
+      if (/created_at >= \?/i.test(sql)) {
+        const fromTime = Number(params[parameterIndex++]);
+        rows = rows.filter((row) => Number(row.created_at) >= fromTime);
+      }
+      if (/created_at < \?/i.test(sql)) {
+        const toTime = Number(params[parameterIndex++]);
+        rows = rows.filter((row) => Number(row.created_at) < toTime);
+      }
+      if (/total_amount/i.test(sql)) {
+        return [{ count: rows.length, total_amount: rows.reduce((sum, row) => sum + Number(row.income_amount), 0) }];
+      }
+      const limit = Number(params[parameterIndex++]);
+      const offset = Number(params[parameterIndex]);
+      return rows.sort((a, b) => Number(b.id) - Number(a.id)).slice(offset, offset + limit);
+    }
     if (/count\(\*\)\s+as\s+count/i.test(sql)) {
       const [transactionId] = params;
       return [{ count: referralLevelIncome.filter((row) => row.transaction_id === transactionId).length }];

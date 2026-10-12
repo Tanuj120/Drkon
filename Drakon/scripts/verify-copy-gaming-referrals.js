@@ -4,14 +4,15 @@ process.env.SKIP_DB = 'true';
 
 const connection = (await import('../src/config/connectDB.js')).default;
 const accountController = (await import('../src/controllers/accountController.js')).default;
+const adminController = (await import('../src/controllers/adminController.js')).default;
 const homeController = (await import('../src/controllers/homeController.js')).default;
 const userControllerModule = await import('../src/controllers/userController.js');
 const userController = userControllerModule.default;
 const { distributeCopyGamingLevelIncome } = userControllerModule;
 
 const packageAmount = 1000;
-const expectedPercentages = [1, 0.5, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25];
-const expectedAmounts = [10, 5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5];
+const expectedPercentages = [1, 0.5, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, ...Array(12).fill(0.1)];
+const expectedAmounts = [10, 5, 2.5, 2.5, 2.5, 2.5, 2.5, 2.5, ...Array(12).fill(1)];
 const members = [];
 
 const createResponse = () => {
@@ -45,7 +46,7 @@ const getUserByPhone = async (phone) => {
 const getBalance = async (phone) => Number((await getUserByPhone(phone)).money || 0);
 
 let inviterCode = 'BOOTSTRAP01';
-for (let index = 1; index <= 9; index++) {
+for (let index = 1; index <= 21; index++) {
     const phone = `15553000${String(index).padStart(3, '0')}`;
     const registration = await invoke(accountController.register, {
         body: {
@@ -71,7 +72,7 @@ for (let index = 1; index <= 9; index++) {
     inviterCode = user.code;
 }
 
-const buyer = members[8];
+const buyer = members[20];
 const [fundResult] = await connection.execute(
     'UPDATE users SET money = money + ? WHERE token = ?',
     [packageAmount, buyer.token]
@@ -107,14 +108,14 @@ const [ledgerRows] = await connection.query(
     'SELECT * FROM referral_level_income WHERE from_phone = ? ORDER BY level_no ASC',
     [buyer.phone]
 );
-assert.equal(ledgerRows.length, 8, 'The 30-day purchase must create exactly eight commission rows');
+assert.equal(ledgerRows.length, 20, 'The 30-day purchase must create exactly twenty commission rows');
 const transactionIds = new Set(ledgerRows.map((row) => row.transaction_id));
-assert.equal(transactionIds.size, 1, 'All eight commissions must share one purchase transaction ID');
+assert.equal(transactionIds.size, 1, 'All twenty commissions must share one purchase transaction ID');
 const [transactionId] = transactionIds;
 assert.match(transactionId, /^COPY_GAMING_30_\d+$/);
 
-for (let level = 1; level <= 8; level++) {
-    const recipient = members[8 - level];
+for (let level = 1; level <= 20; level++) {
+    const recipient = members[20 - level];
     const ledger = ledgerRows.find((row) => Number(row.level_no) === level);
     assert.ok(ledger, `Missing level ${level} commission ledger row`);
     assert.equal(ledger.from_phone, buyer.phone);
@@ -184,9 +185,9 @@ const firstMemberTeam = await invoke(userController.listMyTeam, {
     cookies: { auth: members[0].token },
 });
 assert.equal(firstMemberTeam.status, true);
-assert.equal(firstMemberTeam.max_level, 8);
-assert.equal(firstMemberTeam.f1.length, 8, 'The first member must see eight descendants');
-assert.equal(firstMemberTeam.levels.length, 8);
+assert.equal(firstMemberTeam.max_level, 20);
+assert.equal(firstMemberTeam.f1.length, 20, 'The first member must see twenty descendants');
+assert.equal(firstMemberTeam.levels.length, 20);
 firstMemberTeam.levels.forEach((usersAtLevel, index) => {
     assert.equal(usersAtLevel.length, 1, `Team level ${index + 1} must contain one member`);
     assert.equal(Number(usersAtLevel[0].user_level), index + 1);
@@ -195,14 +196,14 @@ firstMemberTeam.levels.forEach((usersAtLevel, index) => {
 
 const [adminRows] = await connection.query('SELECT * FROM users WHERE code = ?', ['BOOTSTRAP01']);
 assert.equal(adminRows.length, 1);
-assert.equal(Number(adminRows[0].money), 0, 'Level 9 must never receive commission');
-const [levelNineRows] = await connection.query(
+assert.equal(Number(adminRows[0].money), 0, 'Level 21 must never receive commission');
+const [levelTwentyOneRows] = await connection.query(
     'SELECT * FROM referral_level_income WHERE to_phone = ?',
     [adminRows[0].phone]
 );
-assert.equal(levelNineRows.length, 0, 'A level 9 commission row must not exist');
+assert.equal(levelTwentyOneRows.length, 0, 'A level 21 commission row must not exist');
 
-const balancesBeforeDuplicate = await Promise.all(members.slice(0, 8).map((member) => getBalance(member.phone)));
+const balancesBeforeDuplicate = await Promise.all(members.slice(0, 20).map((member) => getBalance(member.phone)));
 const duplicateCredits = await distributeCopyGamingLevelIncome(connection, {
     buyer,
     amount: packageAmount,
@@ -212,7 +213,7 @@ const duplicateCredits = await distributeCopyGamingLevelIncome(connection, {
 });
 assert.deepEqual(duplicateCredits, [], 'Duplicate processing must return no credits');
 assert.deepEqual(
-    await Promise.all(members.slice(0, 8).map((member) => getBalance(member.phone))),
+    await Promise.all(members.slice(0, 20).map((member) => getBalance(member.phone))),
     balancesBeforeDuplicate,
     'Duplicate processing changed a wallet balance'
 );
@@ -220,14 +221,111 @@ const [ledgerRowsAfterDuplicate] = await connection.query(
     'SELECT * FROM referral_level_income WHERE from_phone = ? ORDER BY level_no ASC',
     [buyer.phone]
 );
-assert.equal(ledgerRowsAfterDuplicate.length, 8, 'Duplicate processing inserted extra ledger rows');
+assert.equal(ledgerRowsAfterDuplicate.length, 20, 'Duplicate processing inserted extra ledger rows');
 
 assert.equal(
     expectedAmounts.reduce((total, amount) => total + amount, 0),
-    30,
-    'Expected total 30-day company-funded commission is incorrect'
+    42,
+    'Expected total 30-day referral commission is incorrect'
 );
 
-console.log('30-day Copy Gaming referral verification passed.');
-console.log('Registered 9 isolated test members and verified Levels 1-8: 1%, 0.5%, then 0.25% through Level 8.');
-console.log('Verified wallet credits, Account Transaction History, Promotion History, My Team levels, no Level 9, and duplicate protection.');
+const ninetyDayPercentages = [5, 3, 2, 1, 1, 1, 1, 1, ...Array(12).fill(0.2)];
+const ninetyDayAmounts = [50, 30, 20, 10, 10, 10, 10, 10, ...Array(12).fill(2)];
+await connection.execute('UPDATE users SET money = money + ? WHERE token = ?', [packageAmount, buyer.token]);
+const ninetyDayPurchase = await invoke(userController.createFixedDeposit, {
+    cookies: { auth: buyer.token },
+    body: { amount: packageAmount, tenureDays: 90 },
+});
+assert.equal(ninetyDayPurchase.status, true, ninetyDayPurchase.message);
+assert.equal(await getBalance(buyer.phone), 0);
+assert.deepEqual(
+    ninetyDayPurchase.referralIncome.map(({ level, amount, percentage }) => ({ level, amount, percentage })),
+    ninetyDayPercentages.map((percentage, index) => ({
+        level: index + 1,
+        amount: ninetyDayAmounts[index],
+        percentage,
+    }))
+);
+const ninetyDayRecord = ninetyDayPurchase.data.history.find((record) => Number(record.tenureDays) === 90);
+assert.ok(ninetyDayRecord);
+const ninetyDayTransactionId = `COPY_GAMING_90_${ninetyDayRecord.id}`;
+const [ninetyDayLedger] = await connection.query(
+    'SELECT * FROM referral_level_income WHERE transaction_id = ? ORDER BY level_no ASC',
+    [ninetyDayTransactionId]
+);
+assert.equal(ninetyDayLedger.length, 20);
+for (let index = 0; index < 20; index++) {
+    const recipient = members[19 - index];
+    const ledger = ninetyDayLedger[index];
+    assert.equal(Number(ledger.level_no), index + 1);
+    assert.equal(ledger.to_phone, recipient.phone);
+    assert.equal(Number(ledger.percentage), ninetyDayPercentages[index]);
+    assert.equal(Number(ledger.income_amount), ninetyDayAmounts[index]);
+    assert.equal(await getBalance(recipient.phone), expectedAmounts[index] + ninetyDayAmounts[index]);
+
+    const history = await invoke(userController.listPromotionHistory, {
+        cookies: { auth: recipient.token },
+    });
+    assert.ok(history.total_roses.some((entry) =>
+        entry.transaction_id === ninetyDayTransactionId &&
+        entry.code === `90 Days - Level ${index + 1}` &&
+        Number(entry.f1) === ninetyDayAmounts[index]
+    ));
+    const transactions = await invoke(homeController.getSalaryRecord, {
+        cookies: { auth: recipient.token },
+    });
+    assert.ok(transactions.rows.some((entry) =>
+        entry.orderId === ninetyDayTransactionId &&
+        entry.title === `Level ${index + 1} Income` &&
+        entry.type === '90 Days Copy Gaming Commission' &&
+        Number(entry.amount) === ninetyDayAmounts[index]
+    ));
+}
+assert.equal(ninetyDayAmounts.reduce((total, amount) => total + amount, 0), 174);
+assert.equal((await getUserByPhone(adminRows[0].phone)).money, 0, 'Level 21 received commission');
+
+let adminReport;
+await adminController.copyGamingCommissions(
+    { query: { plan: '90', level: '20', phone: members[0].phone, page: '1' } },
+    { render(view, data) { adminReport = { view, ...data }; } }
+);
+assert.equal(adminReport.view, 'manage/copyGamingCommissions.ejs');
+assert.equal(adminReport.totalRecords, 1);
+assert.equal(adminReport.totalAmount, 2);
+assert.equal(adminReport.rows[0].transaction_id, ninetyDayTransactionId);
+assert.equal(Number(adminReport.rows[0].level_no), 20);
+
+const duplicateNinetyDayCredits = await distributeCopyGamingLevelIncome(connection, {
+    buyer,
+    amount: packageAmount,
+    fixedDepositId: ninetyDayRecord.id,
+    transactionId: ninetyDayTransactionId,
+    levelPercentages: ninetyDayPercentages,
+});
+assert.deepEqual(duplicateNinetyDayCredits, []);
+
+await connection.execute('UPDATE users SET money = money + ? WHERE token = ?', [packageAmount, buyer.token]);
+const additionalPurchase = await invoke(userController.createFixedDeposit, {
+    cookies: { auth: buyer.token },
+    body: { amount: packageAmount, tenureDays: 30 },
+});
+assert.equal(additionalPurchase.status, true, additionalPurchase.message);
+let secondAdminPage;
+await adminController.copyGamingCommissions(
+    { query: { page: '2' } },
+    { render(view, data) { secondAdminPage = data; } }
+);
+assert.equal(secondAdminPage.totalRecords, 60);
+assert.equal(secondAdminPage.totalAmount, 258);
+assert.equal(secondAdminPage.totalPages, 2);
+assert.equal(secondAdminPage.rows.length, 10);
+let oldDateReport;
+await adminController.copyGamingCommissions(
+    { query: { fromDate: '2000-01-01', toDate: '2000-01-01' } },
+    { render(view, data) { oldDateReport = data; } }
+);
+assert.equal(oldDateReport.totalRecords, 0);
+
+console.log('30-day and 90-day Copy Gaming referral verification passed.');
+console.log('Registered 21 isolated test members and verified Levels 1-20 for both plans.');
+console.log('Verified wallets, both histories, My Team, admin report, no Level 21, and duplicate protection.');

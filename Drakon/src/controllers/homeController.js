@@ -1,4 +1,5 @@
 import connection from "../config/connectDB.js";
+import { FIXED_DEPOSIT_PLANS, REFERRAL_MAX_LEVEL } from "../config/copyGamingPlans.js";
 // import jwt from 'jsonwebtoken'
 // import md5 from "md5";
 // import e from "express";
@@ -27,11 +28,11 @@ const addBank = async (req, res) => {
 
 // promotion
 const promotionPage = async (req, res) => {
-    return res.render("promotion/promotion.ejs");
+    return res.render("promotion/promotion.ejs", { copyGamingPlans: FIXED_DEPOSIT_PLANS });
 }
 
 const promotionmyTeamPage = async (req, res) => {
-    return res.render("promotion/myTeam.ejs");
+    return res.render("promotion/myTeam.ejs", { referralMaxLevel: REFERRAL_MAX_LEVEL });
 }
 
 const promotionDesPage = async (req, res) => {
@@ -39,7 +40,7 @@ const promotionDesPage = async (req, res) => {
 }
 
 const tutorialPage = async (req, res) => {
-    return res.render("promotion/tutorial.ejs");
+    return res.render("promotion/tutorial.ejs", { copyGamingPlans: FIXED_DEPOSIT_PLANS });
 }
 
 const bonusRecordPage = async (req, res) => {

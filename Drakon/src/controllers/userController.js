@@ -1,4 +1,5 @@
 import connection from "../config/connectDB.js";
+import { FIXED_DEPOSIT_PLANS, REFERRAL_MAX_LEVEL } from "../config/copyGamingPlans.js";
 import { calculateRemainingUsageAmount } from "../utils/withdrawalTurnover.js";
 import { isValidInrDepositAmount } from "../utils/depositValidation.js";
 import jwt from 'jsonwebtoken'
@@ -8,15 +9,10 @@ import request from 'request';
 import axios from 'axios';
 let timeNow = Date.now();
 
-const FIXED_DEPOSIT_PLANS = [
-    { days: 30, dailyRate: 0.51, levelPercentages: [1, 0.5, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25] },
-    { days: 90, dailyRate: 1.11, levelPercentages: [5, 3, 2, 1, 1, 1, 1, 1] },
-];
 const COPY_GAMING_AMOUNT_STEP = 100;
 const MINIMUM_WITHDRAW_AMOUNT = 999;
 const MAXIMUM_WITHDRAW_AMOUNT = 999999;
 const DAY_IN_MS = 86400000;
-const REFERRAL_MAX_LEVEL = 8;
 const REFERRAL_QUERY_CHUNK_SIZE = 500;
 
 let withdrawalSchemaPromise;
