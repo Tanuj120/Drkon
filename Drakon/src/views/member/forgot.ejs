@@ -263,14 +263,14 @@
                 </div>
             </div>
             <div data-v-51f72da1="" class="forgot-box">
-                <div data-v-51f72da1="" class="mian-from m-t-20">
+                <form data-v-51f72da1="" id="reset-password-form" class="mian-from m-t-20">
                     <div data-v-51f72da1="" class="item c-row c-row-center c-row-middle m-b-30">
                         <span data-v-51f72da1="" class="img c-row c-row-middle-center">
                             <img data-v-51f72da1="" height="20px" width="18px"
                                 src="../index_files/password-b827c2b3.png" class="password" />
                         </span>
-                        <input data-v-d8986e5e="" data-v-51f72da1="" id="password" placeholder="Old Password"
-                            οnkeyup="value=value.replace(/[^\w\.\/]/ig,'')" class="pw-input" />
+                        <input data-v-d8986e5e="" data-v-51f72da1="" id="password" type="password"
+                            placeholder="Old Password" autocomplete="current-password" class="pw-input" />
                     </div>
                     <!-- <div data-v-51f72da1="" class="item c-row c-row-center c-row-middle m-b-30">
                         <span data-v-51f72da1="" class="img c-row c-row-middle-center">
@@ -285,8 +285,8 @@
                             <img data-v-51f72da1="" height="20px" width="18px"
                                 src="../index_files/password-b827c2b3.png" class="password" />
                         </span>
-                        <input type="text" data-v-d8986e5e="" data-v-51f72da1="" id="newPassWord"
-                            placeholder="New Password" οnkeyup="value=value.replace(/[^\w\.\/]/ig,'')"
+                        <input type="password" data-v-d8986e5e="" data-v-51f72da1="" id="newPassWord"
+                            placeholder="New Password" autocomplete="new-password" maxlength="255"
                             class="pw-input" />
                     </div>
                     <div data-v-51f72da1="" class="item c-row c-row-center c-row-middle m-b-30">
@@ -294,12 +294,12 @@
                             <img data-v-51f72da1="" height="20px" width="18px"
                                 src="../index_files/password-b827c2b3.png" class="password" />
                         </span>
-                        <input type="text" data-v-d8986e5e="" data-v-51f72da1="" id="RePassWord"
-                            placeholder="Confirm Password" οnkeyup="value=value.replace(/[^\w\.\/]/ig,'')"
+                        <input type="password" data-v-d8986e5e="" data-v-51f72da1="" id="RePassWord"
+                            placeholder="Confirm Password" autocomplete="new-password" maxlength="255"
                             class="pw-input" />
                     </div>
                     <div data-v-51f72da1="" class="mian-btn m-t-40">
-                        <button data-v-51f72da1="" id="submit"
+                        <button data-v-51f72da1="" id="submit" type="submit"
                             class="gradient van-button van-button--default van-button--normal van-button--block van-button--round">
                             <div data-v-51f72da1="" class="van-button__content">
                                 <span data-v-51f72da1="" class="van-button__text">
@@ -308,7 +308,7 @@
                             </div>
                         </button>
                     </div>
-                </div>
+                </form>
             </div>
             <!---->
             <div data-v-7692a079="" data-v-51f72da1="" class="Loading c-row c-row-middle-center" style="display: none">
@@ -335,58 +335,63 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="/plugins/jquery/jquery.min.js"></script>
     <script src="/js/client.js"></script>
     <script>
-        function alertMess(text, sic) {
-            $('body').append(
-                `
-                <div data-v-1dcba851="" class="msg">
-                    <div data-v-1dcba851="" class="msg-content v-enter-active v-enter-to" style=""> ${text} </div>
-                </div>
-                `
-            );
+        function alertMess(message) {
+            const toast = $('<div data-v-1dcba851="" class="msg"><div data-v-1dcba851="" class="msg-content v-enter-active v-enter-to"></div></div>');
+            toast.find('.msg-content').text(message);
+            $('body').append(toast);
             setTimeout(() => {
-                $('.msg .msg-content').removeClass('v-enter-active v-enter-to');
-                $('.msg .msg-content').addClass('v-leave-active v-leave-to');
+                toast.find('.msg-content').removeClass('v-enter-active v-enter-to').addClass('v-leave-active v-leave-to');
                 setTimeout(() => {
-                    $('.msg').remove();
+                    toast.remove();
                 }, 100);
-                sic.removeClass('block-click');
-            }, 1000);
+            }, 1800);
         }
-        $('#submit').click(function (e) { 
+        $('#reset-password-form').on('submit', function (e) {
             e.preventDefault();
-            let password = $('#password').val().trim();
-            let newPassWord = $('#newPassWord').val().trim();
-            let RePassWord = $('#RePassWord').val().trim();
-            // let otp = $('#otp').val().trim();
-            if (password && newPassWord && RePassWord && RePassWord == newPassWord) {
-                $.ajax({
-                    type: "PUT",
-                    url: "/api/webapi/change/pass",
-                    data: {
-                        password: password,
-                        newPassWord: newPassWord,
-                        RePassWord: RePassWord,
-                    },
-                    dataType: "json",
-                    success: function (response) {
-                        alertMess(`${response.message}`, $(this));
-                        if (response.status === true) {
-                            setTimeout(() => {
-                                history.back();
-                            }, 1000);
-                        }
-                    }
-                });
-            } else if (!password || !newPassWord || !RePassWord) {
-                $(this).addClass('block-click');
-				alertMess('Please enter all required information', $(this));
-            } else {
-                $(this).addClass('block-click');
-				alertMess('Incorrect password confirmation', $(this));
+            const button = $('#submit');
+            if (button.prop('disabled')) return;
+
+            const password = $('#password').val();
+            const newPassWord = $('#newPassWord').val();
+            const RePassWord = $('#RePassWord').val();
+            if (!password || !newPassWord || !RePassWord) {
+                alertMess('Please enter all required information');
+                return;
             }
+            if (newPassWord !== RePassWord) {
+                alertMess('Incorrect password confirmation');
+                return;
+            }
+            if (newPassWord === password) {
+                alertMess('New password must be different from old password');
+                return;
+            }
+
+            button.prop('disabled', true);
+            $.ajax({
+                type: 'PUT',
+                url: '/api/webapi/change/pass',
+                data: { password, newPassWord, RePassWord },
+                dataType: 'json',
+                success: function (response) {
+                    alertMess(response.message || 'Could not update password. Please try again.');
+                    if (response.status === true) {
+                        $('#reset-password-form')[0].reset();
+                        setTimeout(() => { location.replace('/login'); }, 1900);
+                    }
+                },
+                error: function (xhr) {
+                    if (xhr.responseURL && xhr.responseURL.includes('/login')) {
+                        location.replace('/login');
+                        return;
+                    }
+                    alertMess(xhr.responseJSON?.message || 'Could not update password. Please try again.');
+                },
+                complete: function () { button.prop('disabled', false); }
+            });
         });
 
         // function timer(endTime) {

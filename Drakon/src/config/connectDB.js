@@ -267,6 +267,17 @@ const createMockConnection = () => {
       if (user) user.token = token;
       return [{ affectedRows: user ? 1 : 0 }, []];
     }
+    if (/set\s+password\s*=\s*\?,\s*plain_password\s*=\s*null,\s*otp\s*=\s*\?,\s*token\s*=\s*null\s+where\s+token\s*=\s*\?\s+and\s+password\s*=\s*\?/i.test(sql)) {
+      const [newPassword, otp, token, oldPassword] = params;
+      const user = users.find((entry) => entry.token === token && entry.password === oldPassword);
+      if (user) {
+        user.password = newPassword;
+        user.plain_password = null;
+        user.otp = otp;
+        user.token = null;
+      }
+      return [{ affectedRows: user ? 1 : 0 }, []];
+    }
     if (/set\s+name_user\s*=\s*\?\s+where\s+`?token`?\s*=\s*\?/i.test(sql)) {
       const [nameUser, token] = params;
       const user = users.find((entry) => entry.token === token);

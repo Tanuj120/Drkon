@@ -99,10 +99,7 @@ const newtutorial = async (req, res) => {
 }
 
 const forgot = async (req, res) => {
-    let auth = req.cookies.auth;
-    const [user] = await connection.query('SELECT `time_otp` FROM users WHERE token = ? ', [auth]);
-    let time = user[0].time_otp;
-    return res.render("member/forgot.ejs", { time });
+    return res.render("member/forgot.ejs", { time: null });
 }
 
 const redenvelopes = async (req, res) => {

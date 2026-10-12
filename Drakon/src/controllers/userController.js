@@ -921,48 +921,43 @@ const changeUser = async (req, res) => {
 }
 
 const changePassword = async (req, res) => {
-    let auth = req.cookies.auth;
-    let password = req.body.password;
-    let newPassWord = req.body.newPassWord;
-    // let otp = req.body.otp;
+    const auth = req.cookies?.auth;
+    const { password, newPassWord, RePassWord } = req.body || {};
 
-    if (!password || !newPassWord) return res.status(200).json({
-        message: 'Failed',
-        status: false,
-        timeStamp: timeNow,
-    });;
-    const [rows] = await connection.query('SELECT * FROM users WHERE `token` = ? AND `password` = ? ', [auth, md5(password)]);
-    if (rows.length == 0) return res.status(200).json({
-        message: 'Incorrect password',
-        status: false,
-        timeStamp: timeNow,
-    });;
+    if (!auth || typeof password !== 'string' || typeof newPassWord !== 'string' ||
+        typeof RePassWord !== 'string' || !password || !newPassWord || !RePassWord) {
+        return res.status(200).json({ message: 'Please enter all required information', status: false });
+    }
+    if (newPassWord !== RePassWord) {
+        return res.status(200).json({ message: 'Incorrect password confirmation', status: false });
+    }
+    if (newPassWord === password) {
+        return res.status(200).json({ message: 'New password must be different from old password', status: false });
+    }
+    if (newPassWord.length > 255) {
+        return res.status(200).json({ message: 'Password is too long', status: false });
+    }
 
-    // let getTimeEnd = Number(rows[0].time_otp);
-    // let tet = new Date(getTimeEnd).getTime();
-    // var now = new Date().getTime();
-    // var timeRest = tet - now;
-    // if (timeRest <= 0) {
-    //     return res.status(200).json({
-    //         message: 'Mã OTP đã hết hiệu lực',
-    //         status: false,
-    //         timeStamp: timeNow,
-    //     });
-    // }
+    try {
+        // The old hash guards against stale or repeated requests updating the account.
+        const [result] = await connection.execute(
+            'UPDATE users SET password = ?, plain_password = NULL, otp = ?, token = NULL WHERE token = ? AND password = ?',
+            [md5(newPassWord), randomNumber(100000, 999999), auth, md5(password)]
+        );
+        if (result.affectedRows !== 1) {
+            return res.status(200).json({ message: 'Incorrect old password', status: false });
+        }
 
-    // const [check_otp] = await connection.query('SELECT * FROM users WHERE `token` = ? AND `password` = ? AND otp = ? ', [auth, md5(password), otp]);
-    // if(check_otp.length == 0) return res.status(200).json({
-    //     message: 'Mã OTP không chính xác',
-    //     status: false,
-    //     timeStamp: timeNow,
-    // });;
-
-    await connection.query('UPDATE users SET otp = ?, password = ?, plain_password = ? WHERE `token` = ? ', [randomNumber(100000, 999999), md5(newPassWord), newPassWord, auth]);
-    return res.status(200).json({
-        message: 'Password modification successful',
-        status: true,
-        timeStamp: timeNow,
-    });
+        res.clearCookie('auth');
+        res.clearCookie('token');
+        return res.status(200).json({
+            message: 'Password updated. Please log in with your new password.',
+            status: true,
+        });
+    } catch (error) {
+        console.error('Password change failed:', error);
+        return res.status(500).json({ message: 'Could not update password. Please try again.', status: false });
+    }
 
 }
 
