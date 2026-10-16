@@ -4,6 +4,7 @@ import { calculateRemainingUsageAmount } from "../utils/withdrawalTurnover.js";
 import { isValidInrDepositAmount } from "../utils/depositValidation.js";
 import jwt from 'jsonwebtoken'
 import md5 from "md5";
+import { randomBytes } from 'node:crypto';
 import request from 'request';
 
 import axios from 'axios';
@@ -939,13 +940,27 @@ const changePassword = async (req, res) => {
     }
 
     try {
-        // The old hash guards against stale or repeated requests updating the account.
+        // Older installations do not all have the same optional user columns.
+        // The password and session token are the only fields required for this change.
+        const [columns] = await connection.query('SHOW COLUMNS FROM `users`');
+        const plainPasswordColumn = columns.find((column) => column.Field === 'plain_password');
+        const clearPlainPassword = plainPasswordColumn
+            ? `, plain_password = ${plainPasswordColumn.Null === 'NO' ? "''" : 'NULL'}`
+            : '';
+        // Rotate the database token so every existing session is invalidated,
+        // including on legacy schemas that require a non-NULL token.
+        const invalidatedToken = randomBytes(32).toString('hex');
+        // The old hash also guards against stale or repeated requests.
         const [result] = await connection.execute(
-            'UPDATE users SET password = ?, plain_password = NULL, otp = ?, token = NULL WHERE token = ? AND password = ?',
-            [md5(newPassWord), randomNumber(100000, 999999), auth, md5(password)]
+            `UPDATE users SET password = ?${clearPlainPassword}, token = ? WHERE token = ? AND password = ?`,
+            [md5(newPassWord), invalidatedToken, auth, md5(password)]
         );
         if (result.affectedRows !== 1) {
-            return res.status(200).json({ message: 'Incorrect old password', status: false });
+            const [sessions] = await connection.execute('SELECT token FROM users WHERE token = ?', [auth]);
+            return res.status(200).json({
+                message: sessions.length ? 'Incorrect old password' : 'Your session expired. Please log in again.',
+                status: false,
+            });
         }
 
         res.clearCookie('auth');

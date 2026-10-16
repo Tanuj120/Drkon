@@ -80,6 +80,7 @@ try {
 
     const wrongOld = await changePassword(auth, 'incorrect', 'new-password-123', 'new-password-123');
     assert.equal(wrongOld.data.status, false);
+    assert.equal(wrongOld.data.message, 'Incorrect old password');
     const mismatch = await changePassword(auth, 'qwert', 'new-password-123', 'different');
     assert.equal(mismatch.data.status, false);
     const unchanged = await changePassword(auth, 'qwert', 'qwert', 'qwert');
@@ -96,6 +97,7 @@ try {
 
     const repeated = await changePassword(currentLogin.value, 'qwert', 'another-password', 'another-password');
     assert.equal(repeated.data.status, false, 'Stale request changed the password again');
+    assert.equal(repeated.data.message, 'Your session expired. Please log in again.');
     assert.equal((await login('new-password-123')).status, true);
 
     console.log('Password reset verification passed: form, validation, DB update, old-login rejection, new-login acceptance, and stale-request rejection.');

@@ -267,14 +267,14 @@ const createMockConnection = () => {
       if (user) user.token = token;
       return [{ affectedRows: user ? 1 : 0 }, []];
     }
-    if (/set\s+password\s*=\s*\?,\s*plain_password\s*=\s*null,\s*otp\s*=\s*\?,\s*token\s*=\s*null\s+where\s+token\s*=\s*\?\s+and\s+password\s*=\s*\?/i.test(sql)) {
-      const [newPassword, otp, token, oldPassword] = params;
+    if (/set\s+password\s*=\s*\?(?:,\s*plain_password\s*=\s*(?:null|''))?,\s*token\s*=\s*\?\s+where\s+token\s*=\s*\?\s+and\s+password\s*=\s*\?/i.test(sql)) {
+      const [newPassword, invalidatedToken, token, oldPassword] = params;
       const user = users.find((entry) => entry.token === token && entry.password === oldPassword);
       if (user) {
         user.password = newPassword;
-        user.plain_password = null;
-        user.otp = otp;
-        user.token = null;
+        if (/plain_password\s*=\s*null/i.test(sql)) user.plain_password = null;
+        if (/plain_password\s*=\s*''/i.test(sql)) user.plain_password = '';
+        user.token = invalidatedToken;
       }
       return [{ affectedRows: user ? 1 : 0 }, []];
     }
@@ -609,12 +609,16 @@ const createMockConnection = () => {
       return [[{ count: 1, DATA_TYPE: "varchar" }], []];
     }
     if (/^\s*show\s+columns\s+from\s+`?users`?/i.test(sql)) {
-      return [[
+      const fields = [
         'id', 'id_user', 'phone', 'email', 'name_user', 'password', 'plain_password',
         'token', 'money', 'total_money', 'code', 'invite', 'ctv', 'veri', 'otp', 'ip',
         'ip_address', 'status', 'time', 'time_otp', 'free_bonus', 'first_deposit',
         'level', 'user_level', 'roses_f', 'roses_f1', 'roses_today', 'recharge'
-      ].map((Field) => ({ Field })), []];
+      ];
+      const availableFields = process.env.MOCK_USER_COLUMNS === 'without-plain-password'
+        ? fields.filter((field) => field !== 'plain_password')
+        : fields;
+      return [availableFields.map((Field) => ({ Field, Null: process.env.MOCK_PLAIN_PASSWORD_NOT_NULL === 'true' && Field === 'plain_password' ? 'NO' : 'YES' })), []];
     }
     if (/^\s*show\s+index\s+from\s+`?users`?/i.test(sql)) {
       return [[{ Key_name: 'uq_users_email', Column_name: 'email', Non_unique: 0 }], []];
