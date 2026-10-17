@@ -77,10 +77,8 @@ const transfer = async (req, res) => {
 const mianPage = async (req, res) => {
     let auth = req.cookies.auth;
     const [user] = await connection.query('SELECT `level` FROM users WHERE `token` = ? ', [auth]);
-    const [settings] = await connection.query('SELECT `cskh` FROM admin');
-    let cskh = settings[0].cskh;
     let level = user[0].level;
-    return res.render("member/index.ejs", { level, cskh });
+    return res.render("member/index.ejs", { level });
 }
 const aboutPage = async (req, res) => {
     return res.render("member/about/index.ejs");
